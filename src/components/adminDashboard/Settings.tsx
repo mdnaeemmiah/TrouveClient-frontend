@@ -177,7 +177,10 @@ export default function Settings() {
           </div>
           <div>
             <label className="text-xs font-medium text-slate-500">Password Expiry Policy</label>
-            <select className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#00663f]">
+            <select
+              defaultValue="90 Days"
+              className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#00663f]"
+            >
               <option>30 Days</option>
               <option>60 Days</option>
               <option>90 Days</option>
