@@ -23,19 +23,19 @@ const Register: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col lg:flex-row">
-      <aside className="hidden lg:flex lg:w-1/2 bg-[#035f3a] text-white px-6 sm:px-10 xl:px-14 py-12 lg:py-14 flex-col justify-center">
-        <div className="max-w-md">
+      <aside className="hidden lg:flex lg:w-1/2 bg-[#035f3a] text-white px-6 sm:px-10 xl:px-14 py-12 lg:py-14 flex-col items-start justify-center">
+        <div className="max-w-md text-left">
           <h1 className="text-xl font-bold mb-10">TrouveClients.fr</h1>
-          <h2 className="text-4xl xl:text-5xl font-semibold leading-tight tracking-tight max-w-sm">
+          <h2 className="text-[28px] sm:text-[32px] font-bold leading-[1.2] tracking-tight max-w-sm">
             Join the largest service community in France.
           </h2>
-          <p className="mt-6 text-sm xl:text-[15px] leading-6 text-white/85 max-w-sm">
+          <p className="mt-6 text-sm leading-6 text-white/85 max-w-sm">
             Find qualified clients or the ideal professional for your projects in just a few clicks.
           </p>
 
-          <div className="mt-8 space-y-5">
-            <div className="flex items-start gap-3">
-              <div className="h-6 w-6 rounded-md bg-white/15 flex items-center justify-center mt-0.5">
+          <div className="mt-8 space-y-5 flex flex-col items-start">
+            <div className="flex items-start gap-3 text-left">
+              <div className="h-6 w-6 rounded-md bg-white/15 flex items-center justify-center mt-0.5 shrink-0">
                 <FiShield className="text-white text-sm" />
               </div>
               <div>
@@ -44,8 +44,8 @@ const Register: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-start gap-3">
-              <div className="h-6 w-6 rounded-md bg-white/15 flex items-center justify-center mt-0.5">
+            <div className="flex items-start gap-3 text-left">
+              <div className="h-6 w-6 rounded-md bg-white/15 flex items-center justify-center mt-0.5 shrink-0">
                 <FiTrendingUp className="text-white text-sm" />
               </div>
               <div>

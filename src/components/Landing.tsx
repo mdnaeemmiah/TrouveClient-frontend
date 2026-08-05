@@ -5,7 +5,6 @@ import {
   ChefHat,
   Heart,
   MapPin,
-  Menu,
   Phone,
   Search,
   ShieldCheck,
@@ -15,12 +14,12 @@ import {
   Wrench,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
+import Navbar from "./Navbar";
+import Footer from "./Footer";
+import { businesses } from "@/src/data/businesses";
 import heroImage from "../assets/landing/hero.svg";
-import businessOneImage from "../assets/landing/img1.svg";
-import businessTwoImage from "../assets/landing/img2.svg";
-import businessThreeImage from "../assets/landing/img3.svg";
-import businessFourImage from "../assets/landing/img4.svg";
 
 const categories = [
   { name: "Restaurants", count: "1,245 businesses", icon: ChefHat, tone: "bg-orange-50 text-orange-500" },
@@ -29,13 +28,6 @@ const categories = [
   { name: "Garages", count: "923 businesses", icon: Building2, tone: "bg-yellow-50 text-yellow-600" },
   { name: "Electricians", count: "456 businesses", icon: Bolt, tone: "bg-indigo-50 text-indigo-500" },
   { name: "Dentists", count: "321 businesses", icon: Stethoscope, tone: "bg-emerald-50 text-emerald-500" },
-];
-
-const businesses = [
-  { name: "Le Bistrot Parisien", details: "Restaurant • Paris", rating: "4.8 (124 reviews)", image: businessOneImage },
-  { name: "Salon Élégance", details: "Hair Salon • Lyon", rating: "4.9 (98 reviews)", image: businessTwoImage },
-  { name: "Garage Auto Plus", details: "Garage • Marseille", rating: "4.7 (86 reviews)", image: businessThreeImage },
-  { name: "Plomberie Express", details: "Plumber • Nice", rating: "4.6 (64 reviews)", image: businessFourImage },
 ];
 
 const benefits: { icon: LucideIcon; title: string; description: string }[] = [
@@ -48,19 +40,7 @@ const benefits: { icon: LucideIcon; title: string; description: string }[] = [
 export default function Landing() {
   return (
     <main className="min-h-screen bg-[#f7f7fa] font-[family-name:var(--font-geist-sans)] text-[#1c1d22]">
-      <header className="flex h-[72px] items-center gap-9 border-b border-[#f0f1f2] bg-white px-6 lg:px-[max(30px,calc((100vw-1400px)/2))]">
-        <a className="text-xl font-extrabold tracking-tight text-[#00663f] lg:text-[22px]" href="#top">TrouveClients.fr</a>
-        <nav className="hidden h-full items-center gap-7 text-xs md:flex lg:text-[13px]" aria-label="Primary navigation">
-          <a className="relative grid h-full place-items-center font-bold text-[#00663f] after:absolute after:bottom-4 after:h-0.5 after:w-7 after:bg-[#00663f]" href="#top">Home</a>
-          <a href="#categories">About Us</a>
-          <a href="#businesses">Feed</a>
-        </nav>
-        <div className="ml-auto hidden items-center gap-8 text-xs md:flex lg:text-[13px]">
-          <a href="/auth/login">Sign in</a>
-          <a className="rounded-lg bg-[#00663f] px-6 py-2.5 font-bold text-white" href="/auth/register">Add Your Business</a>
-        </div>
-        <button className="ml-auto text-[#00663f] md:hidden" type="button" aria-label="Open navigation menu"><Menu size={20} /></button>
-      </header>
+      <Navbar />
 
       <section className="grid min-h-[430px] items-center gap-12 px-5 py-12 md:grid-cols-[minmax(390px,1fr)_minmax(420px,630px)] md:px-6 md:py-[72px] lg:px-[max(30px,calc((100vw-1400px)/2))]" id="top">
         <div className="max-w-[580px]">
@@ -96,21 +76,18 @@ export default function Landing() {
       </section>
 
       <section className="bg-[#f2f2f5] px-5 pt-12 pb-12 md:px-6 md:pt-[67px] md:pb-[72px] lg:px-[max(30px,calc((100vw-1400px)/2))]" id="businesses">
-        <div className="mb-6 flex items-start justify-between gap-4 md:mb-9 md:items-end"><div><h2 className="mb-2.5 text-[25px] font-bold leading-none tracking-tight md:text-[29px] lg:text-[34px]">Featured Businesses</h2><p className="text-[13px] text-[#5c6168] lg:text-[15px]">The highest rated professionals in your region</p></div><a className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px] font-bold text-[#00663f] md:text-[13px] lg:text-sm" href="#businesses">View all businesses <ArrowRight size={17} /></a></div>
+        <div className="mb-6 flex items-start justify-between gap-4 md:mb-9 md:items-end"><div><h2 className="mb-2.5 text-[25px] font-bold leading-none tracking-tight md:text-[29px] lg:text-[34px]">Featured Businesses</h2><p className="text-[13px] text-[#5c6168] lg:text-[15px]">The highest rated professionals in your region</p></div><Link className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[11px] font-bold text-[#00663f] md:text-[13px] lg:text-sm" href="/feature">View all businesses <ArrowRight size={17} /></Link></div>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-          {businesses.map((business) => <article className="overflow-hidden rounded-[15px] bg-white" key={business.name}>
+          {businesses.map((business) => <article className="overflow-hidden rounded-[15px] bg-white" key={business.id}>
             <div className="relative h-[205px] lg:h-[183px]"><Image className="object-cover" src={business.image} alt={business.name} fill /><span className="absolute top-3 left-3 rounded-md bg-[#00663f] px-2 py-1 text-[8px] font-extrabold uppercase text-white">Featured</span></div>
-            <div className="px-[18px] pt-[15px] pb-[17px]"><p className="mb-1.5 text-[10px] lg:text-[11px]"><b className="text-sm text-[#f4ac00]">★</b> {business.rating}</p><h3 className="mb-2 text-xl leading-none font-bold tracking-tight lg:text-[22px]">{business.name}</h3><p className="mb-4 text-[11px] text-[#656a6f] lg:text-xs">{business.details}</p><div className="flex gap-2"><a className="grid flex-1 place-items-center rounded-lg bg-[#00663f] py-2.5 text-[11px] font-bold text-white lg:text-xs" href="#contact">Contact</a><button className="grid w-9 place-items-center rounded-lg border border-[#dfe2e4] text-[#85908e]" type="button" aria-label={`Save ${business.name}`}><Heart size={20} /></button></div></div>
+            <div className="px-[18px] pt-[15px] pb-[17px]"><p className="mb-1.5 text-[10px] lg:text-[11px]"><b className="text-sm text-[#f4ac00]">★</b> {business.rating}</p><h3 className="mb-2 text-xl leading-none font-bold tracking-tight lg:text-[22px]">{business.name}</h3><p className="mb-4 text-[11px] text-[#656a6f] lg:text-xs">{business.details}</p><div className="flex gap-2"><Link className="grid flex-1 place-items-center rounded-lg bg-[#00663f] py-2.5 text-[11px] font-bold text-white lg:text-xs" href={`/feature/${business.id}`}>Contact</Link><button className="grid w-9 place-items-center rounded-lg border border-[#dfe2e4] text-[#85908e]" type="button" aria-label={`Save ${business.name}`}><Heart size={20} /></button></div></div>
           </article>)}
         </div>
       </section>
 
       <section className="bg-[#00774c] px-5 py-[57px] text-center text-white md:py-[70px]" id="join"><h2 className="text-[31px] font-bold tracking-tight md:text-4xl lg:text-[42px]">Are you a business owner?</h2><p className="mx-auto my-5 max-w-[610px] text-sm leading-relaxed text-[#b5e0cc] lg:max-w-[680px] lg:text-[16px]">Grow your local presence and connect with thousands of potential customers in your city. Join our directory today.</p><div className="flex flex-col items-center justify-center gap-4 sm:flex-row"><a className="rounded-[10px] bg-white px-6 py-3.5 text-[13px] font-bold text-[#00663f] lg:text-sm" href="#join">Add Your Business Now</a><a className="rounded-[10px] border border-[#45b18a] px-6 py-3.5 text-[13px] font-bold lg:text-sm" href="#about">Learn More</a></div></section>
 
-      <footer className="bg-[#181a1b] text-white">
-        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-8 px-6 py-11 sm:grid-cols-2 lg:grid-cols-[1.65fr_1fr_1.35fr_1.5fr] lg:gap-12 lg:px-[max(30px,calc((100vw-1400px)/2))]"><div><a className="mb-5 inline-block text-xl font-extrabold tracking-tight" href="#top">TrouveClients.fr</a><p className="text-xs leading-relaxed text-[#a2a7ab]">Find. Choose. Contact. Your local business directory in France.</p><div className="mt-5 flex gap-3"><a className="grid h-7 w-7 place-items-center rounded-full bg-[#363a3b] text-[11px] font-extrabold" href="#linkedin" aria-label="LinkedIn">in</a><a className="grid h-7 w-7 place-items-center rounded-full bg-[#363a3b] text-[11px] font-extrabold" href="#x" aria-label="X">X</a><a className="grid h-7 w-7 place-items-center rounded-full bg-[#363a3b] text-[11px] font-extrabold" href="#instagram" aria-label="Instagram">◎</a></div></div><div><h2 className="mb-5 text-[13px] font-bold">For Customers</h2><a className="mb-4 block text-[11px] text-[#bcc1c4]" href="#how">How it works</a><a className="mb-4 block text-[11px] text-[#bcc1c4]" href="#blog">Blog</a><a className="block text-[11px] text-[#bcc1c4]" href="#contact">Contact</a></div><div><h2 className="mb-5 text-[13px] font-bold">For Businesses</h2><a className="mb-4 block text-[11px] text-[#bcc1c4]" href="#join">Add your business</a><a className="mb-4 block text-[11px] text-[#bcc1c4]" href="#dashboard">Business Dashboard</a><a className="block text-[11px] text-[#bcc1c4]" href="#plans">Plans & pricing</a></div><div><h2 className="mb-5 text-[13px] font-bold">Newsletter</h2><p className="text-xs leading-relaxed text-[#a2a7ab]">Get tips and news for local businesses</p><form className="mt-3 flex h-[38px] rounded-lg border border-[#4d5151] py-[3px] pr-[3px] pl-3"><input className="min-w-0 flex-1 bg-transparent text-[11px] text-white outline-0" aria-label="Your email address" placeholder="Your email" type="email" /><button className="grid w-9 place-items-center rounded-md bg-[#00663f]" aria-label="Subscribe" type="submit"><ArrowRight size={18} /></button></form></div></div>
-        <div className="flex min-h-[66px] flex-col items-start justify-center gap-4 border-t border-[#282c2d] px-6 py-5 text-[10px] text-[#8b9292] sm:flex-row sm:items-center sm:justify-between lg:px-[max(30px,calc((100vw-1400px)/2))]"><span>© 2024 TrouveClients.fr. All rights reserved.</span><div className="flex gap-5 sm:gap-8"><a href="#terms">Terms of service</a><a href="#privacy">Privacy policy</a></div></div>
-      </footer>
+      <Footer />
     </main>
   );
 }

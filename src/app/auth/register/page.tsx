@@ -1,5 +1,4 @@
-import Register from '@/src/components/auth/Register'
-import React from 'react'
+import Register from '@/src/components/auth/register'
 
 export default function page() {
   return (

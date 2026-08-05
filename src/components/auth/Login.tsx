@@ -4,11 +4,17 @@ import { FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { FaApple } from 'react-icons/fa';
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/src/context/AuthContext";
+
 const Login: React.FC = () => {
+  const router = useRouter();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -16,8 +22,13 @@ const Login: React.FC = () => {
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    // Add login logic here
-    console.log({ email, password, rememberMe });
+    setError('');
+    const user = login(email, password);
+    if (!user) {
+      setError('Invalid email or password.');
+      return;
+    }
+    router.push('/');
   };
 
   return (
@@ -91,6 +102,8 @@ const Login: React.FC = () => {
             Forgot password?
           </Link>
         </div>
+
+        {error && <p className="mb-4 text-xs text-red-600">{error}</p>}
 
         <button
           type="submit"
