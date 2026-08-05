@@ -3,12 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Menu, User } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/src/context/AuthContext";
+
+const navItems: { label: string; href: string; match: string | null }[] = [
+  { label: "Home", href: "home", match: "/" },
+  { label: "About Us", href: "/#categories", match: null },
+  { label: "Search", href: "/search", match: "/search" },
+  { label: "Feed", href: "/feed", match: "/feed" },
+];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -22,19 +30,39 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const dashboardHref =
+    user?.role === "admin"
+      ? "/adminDashboard/dashboard"
+      : user?.role === "business"
+        ? "/businessDashboard/dashboard"
+        : "/userDashboard/dashboard";
+
   const handleLogout = () => {
     logout();
     setOpen(false);
-    router.push("/");
+    router.push("/auth/login");
   };
 
   return (
     <header className="flex h-[72px] items-center gap-9 border-b border-[#f0f1f2] bg-white px-6 lg:px-[max(30px,calc((100vw-1400px)/2))]">
       <Link className="text-xl font-extrabold tracking-tight text-[#00663f] lg:text-[22px]" href="/#top">TrouveClients.fr</Link>
       <nav className="hidden h-full items-center gap-7 text-xs md:flex lg:text-[13px]" aria-label="Primary navigation">
-        <Link className="relative grid h-full place-items-center font-bold text-[#00663f] after:absolute after:bottom-4 after:h-0.5 after:w-7 after:bg-[#00663f]" href="/#top">Home</Link>
-        <Link href="/#categories">About Us</Link>
-        <Link href="/#businesses">Feed</Link>
+        {navItems.map((item) => {
+          const active = item.match !== null && pathname === item.match;
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`relative grid h-full place-items-center font-bold hover:text-[#00663f] ${
+                active
+                  ? "text-[#00663f] after:absolute after:bottom-4 after:h-0.5 after:w-7 after:bg-[#00663f]"
+                  : "text-black"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="ml-auto hidden items-center gap-8 text-xs md:flex lg:text-[13px]">
@@ -53,7 +81,7 @@ export default function Navbar() {
               <div className="absolute right-0 top-11 w-52 rounded-lg border border-[#eef0f1] bg-white py-2 shadow-[0_8px_22px_#1a1a1a14]">
                 <p className="truncate px-4 py-1.5 text-[11px] text-[#8b9292]">{user.email}</p>
                 <Link
-                  href="/dashboard"
+                  href={dashboardHref}
                   className="block px-4 py-2 text-xs font-semibold text-[#1c1d22] hover:bg-[#f2f2f5]"
                   onClick={() => setOpen(false)}
                 >

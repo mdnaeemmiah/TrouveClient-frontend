@@ -41,7 +41,7 @@ export default function AdminSidebar({ open, onClose }: AdminSidebarProps) {
   const handleLogout = () => {
     localStorage.removeItem("accessToken");
     document.cookie = "admin_auth=; path=/; max-age=0; samesite=lax";
-    router.push("/login");
+    router.push("/auth/login");
   };
 
   const isActive = (href: string) => pathname?.startsWith(href);

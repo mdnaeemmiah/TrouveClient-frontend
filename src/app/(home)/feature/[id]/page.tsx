@@ -1,6 +1,5 @@
 import {
   BadgeCheck,
-  Calendar,
   CheckCircle2,
   Clock,
   Globe,
@@ -16,6 +15,8 @@ import { FaFacebookF, FaInstagram, FaWhatsapp, FaYoutube } from "react-icons/fa"
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { businesses, getBusinessById } from "@/src/data/businesses";
+import GiveReviewButton from "@/src/components/GiveReviewButton";
+import BookTableButton from "@/src/components/BookTableButton";
 
 export function generateStaticParams() {
   return businesses.map((business) => ({ id: business.id }));
@@ -118,12 +119,13 @@ export default async function BusinessDetailPage({
                 <button type="button" className="flex items-center justify-center gap-2 rounded-lg border border-[#d7d9db] py-2.5 text-[13px] font-bold text-[#3a3d40] hover:bg-[#f7f7fa]">
                   <UserPlus size={16} /> Follow Business
                 </button>
-                <button type="button" className="flex items-center justify-center gap-2 rounded-lg border border-[#d7d9db] py-2.5 text-[13px] font-bold text-[#3a3d40] hover:bg-[#f7f7fa]">
-                  <Star size={16} /> Give Review
-                </button>
-                <button type="button" className="flex items-center justify-center gap-2 rounded-lg bg-[#00663f] py-2.5 text-[13px] font-bold text-white hover:bg-[#00552f]">
-                  <Calendar size={16} /> Book Now
-                </button>
+                <GiveReviewButton businessName={business.name} />
+                <BookTableButton
+                  businessName={business.name}
+                  location={business.location}
+                  category={business.category}
+                  image={business.detailImage}
+                />
                 <button type="button" className="flex items-center justify-center gap-2 rounded-lg bg-[#00663f] py-2.5 text-[13px] font-bold text-white hover:bg-[#00552f]">
                   <Phone size={16} /> Call Now
                 </button>
