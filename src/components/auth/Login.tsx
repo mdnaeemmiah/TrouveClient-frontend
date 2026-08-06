@@ -28,7 +28,7 @@ const Login: React.FC = () => {
       setError('Invalid email or password.');
       return;
     }
-    router.push('/');
+    router.push(user.role === 'customer' ? '/onboarding/grow' : '/');
   };
 
   return (
