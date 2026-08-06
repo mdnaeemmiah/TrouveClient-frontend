@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/src/context/AuthContext";
 
 const navItems: { label: string; href: string; match: string | null }[] = [
-  { label: "Home", href: "home", match: "/" },
+  { label: "Home", href: "/", match: "/" },
   { label: "About Us", href: "/#categories", match: null },
   { label: "Search", href: "/search", match: "/search" },
   { label: "Feed", href: "/feed", match: "/feed" },
@@ -35,7 +35,7 @@ export default function Navbar() {
       ? "/adminDashboard/dashboard"
       : user?.role === "business"
         ? "/businessDashboard/dashboard"
-        : "/userDashboard/dashboard";
+        : "/userDashboard/profile";
 
   const handleLogout = () => {
     logout();
