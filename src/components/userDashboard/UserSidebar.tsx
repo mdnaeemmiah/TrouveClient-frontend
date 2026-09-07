@@ -21,7 +21,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: "My Profile", href: "/userDashboard/profile", icon: FiUser },
   { label: "Saved Businesses", href: "/userDashboard/savedBusiness", icon: FiBookmark },
-  { label: "Notifications", href: "/userDashboard/notification", icon: FiBell },
+  { label: "My Reminders", href: "/userDashboard/notification", icon: FiBell },
   { label: "My Bookings", href: "/userDashboard/myBookings", icon: FiCalendar },
   { label: "System Settings", href: "/userDashboard/settings", icon: FiSettings },
 ];

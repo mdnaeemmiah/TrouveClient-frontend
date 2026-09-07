@@ -59,7 +59,9 @@ export default function Feed() {
       <div className="mx-auto grid grid-cols-1 gap-5 px-5 py-8 md:px-6 lg:grid-cols-[240px_1fr_260px] lg:px-[max(30px,calc((100vw-1400px)/2))] lg:py-10">
         <aside className="space-y-5 lg:order-1">
           <div className="rounded-2xl border border-[#eef0f1] bg-white p-5">
-            <h2 className="text-[15px] font-bold text-[#00663f]">Categories to Follow</h2>
+            <h2 className="text-[15px] font-bold text-[#00663f]">
+              Categories to Follow
+            </h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {categories.map((category) => (
                 <button
@@ -71,13 +73,18 @@ export default function Feed() {
                 </button>
               ))}
             </div>
-            <button type="button" className="mt-3 text-[12px] font-semibold text-[#00663f] hover:underline">
+            <button
+              type="button"
+              className="mt-3 text-[12px] font-semibold text-[#00663f] hover:underline"
+            >
               See all categories
             </button>
           </div>
 
           <div className="rounded-2xl border border-[#eef0f1] bg-white p-5">
-            <h2 className="text-[15px] font-bold text-[#00663f]">フランス ニュース</h2>
+            <h2 className="text-[15px] font-bold text-[#00663f]">
+              France News
+            </h2>
             <p className="mt-2 text-[12px] text-[#5c6168]">
               Check out local market updates and new business laws in France.
             </p>
@@ -98,7 +105,9 @@ export default function Feed() {
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={`relative pb-3 text-[14px] font-semibold transition-colors ${
-                  activeTab === tab ? "text-[#00663f]" : "text-[#9a9da1] hover:text-[#5c6168]"
+                  activeTab === tab
+                    ? "text-[#00663f]"
+                    : "text-[#9a9da1] hover:text-[#5c6168]"
                 }`}
               >
                 {tab}
@@ -117,8 +126,12 @@ export default function Feed() {
                     <Croissant size={18} />
                   </span>
                   <div>
-                    <p className="text-[14px] font-bold text-[#1c1d22]">Le Petit Fournil</p>
-                    <p className="text-[12px] text-[#8a8d91]">Saint-Germain-des-Prés, Paris · 2h ago</p>
+                    <p className="text-[14px] font-bold text-[#1c1d22]">
+                      Le Petit Fournil
+                    </p>
+                    <p className="text-[12px] text-[#8a8d91]">
+                      Saint-Germain-des-Prés, Paris · 2h ago
+                    </p>
                   </div>
                 </div>
                 <button
@@ -130,13 +143,19 @@ export default function Feed() {
               </div>
 
               <p className="mt-3 text-[13px] leading-relaxed text-[#3a3d40]">
-                We are thrilled to announce our new seasonal Spring collection! From wild strawberry tartlets to
-                honey-lavender macarons, come taste the essence of Provence right here in Paris. Exclusive offer
-                for our followers: 10% off this weekend! 🥐✨
+                We are thrilled to announce our new seasonal Spring collection!
+                From wild strawberry tartlets to honey-lavender macarons, come
+                taste the essence of Provence right here in Paris. Exclusive
+                offer for our followers: 10% off this weekend! 🥐✨
               </p>
 
               <div className="relative mt-3 h-56 w-full overflow-hidden rounded-xl sm:h-72">
-                <Image src={detailOneImage} alt="Le Petit Fournil" fill className="object-cover" />
+                <Image
+                  src={detailOneImage}
+                  alt="Le Petit Fournil"
+                  fill
+                  className="object-cover"
+                />
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -155,7 +174,10 @@ export default function Feed() {
                   >
                     Visit Profile <ArrowRight size={13} />
                   </button>
-                  <button type="button" className="text-[#c3c5c8] hover:text-[#8a8d91]">
+                  <button
+                    type="button"
+                    className="text-[#c3c5c8] hover:text-[#8a8d91]"
+                  >
                     <Flag size={14} />
                   </button>
                 </div>
@@ -169,7 +191,9 @@ export default function Feed() {
                     <Rocket size={18} />
                   </span>
                   <div>
-                    <p className="text-[14px] font-bold text-[#1c1d22]">Vortex Digital Labs</p>
+                    <p className="text-[14px] font-bold text-[#1c1d22]">
+                      Vortex Digital Labs
+                    </p>
                     <p className="text-[12px] text-[#8a8d91]">Lyon · 5h ago</p>
                   </div>
                 </div>
@@ -183,8 +207,10 @@ export default function Feed() {
               </div>
 
               <p className="mt-3 text-[13px] leading-relaxed text-[#3a3d40]">
-                Our Q1 2024 Tech Outlook for French SMEs is now available. Download our full report to understand
-                how AI is transforming the local manufacturing landscape and how you can leverage new grants.
+                Our Q1 2024 Tech Outlook for French SMEs is now available.
+                Download our full report to understand how AI is transforming
+                the local manufacturing landscape and how you can leverage new
+                grants.
               </p>
 
               <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#eef0f1] bg-[#f7f7fa] p-3">
@@ -192,8 +218,12 @@ export default function Feed() {
                   <FileText size={20} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold text-[#1c1d22]">Q1_2024_Tech_Outlook_France.pdf</p>
-                  <p className="text-[11px] text-[#8a8d91]">4.2 MB · 24 pages</p>
+                  <p className="truncate text-[13px] font-semibold text-[#1c1d22]">
+                    Q1_2024_Tech_Outlook_France.pdf
+                  </p>
+                  <p className="text-[11px] text-[#8a8d91]">
+                    4.2 MB · 24 pages
+                  </p>
                   <button
                     type="button"
                     className="mt-0.5 flex items-center gap-1 text-[12px] font-semibold text-[#00663f] hover:underline"
@@ -219,7 +249,10 @@ export default function Feed() {
                   >
                     Visit Profile <ArrowRight size={13} />
                   </button>
-                  <button type="button" className="text-[#c3c5c8] hover:text-[#8a8d91]">
+                  <button
+                    type="button"
+                    className="text-[#c3c5c8] hover:text-[#8a8d91]"
+                  >
                     <Flag size={14} />
                   </button>
                 </div>
@@ -239,18 +272,26 @@ export default function Feed() {
 
         <aside className="lg:order-3">
           <div className="rounded-2xl border border-[#eef0f1] bg-white p-5">
-            <h2 className="text-[15px] font-bold text-[#00663f]">Trending Businesses</h2>
+            <h2 className="text-[15px] font-bold text-[#00663f]">
+              Trending Businesses
+            </h2>
             <div className="mt-3 space-y-4">
               {trendingBusinesses.map((business) => {
                 const Icon = business.icon;
                 return (
                   <div key={business.name} className="flex items-start gap-3">
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${business.iconBg} ${business.iconColor}`}>
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${business.iconBg} ${business.iconColor}`}
+                    >
                       <Icon size={16} />
                     </span>
                     <div className="min-w-0">
-                      <p className="truncate text-[13px] font-semibold text-[#1c1d22]">{business.name}</p>
-                      <p className="text-[11px] text-[#8a8d91]">{business.meta}</p>
+                      <p className="truncate text-[13px] font-semibold text-[#1c1d22]">
+                        {business.name}
+                      </p>
+                      <p className="text-[11px] text-[#8a8d91]">
+                        {business.meta}
+                      </p>
                       <p className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-[#00663f]">
                         <TrendingUp size={11} /> {business.stat}
                       </p>

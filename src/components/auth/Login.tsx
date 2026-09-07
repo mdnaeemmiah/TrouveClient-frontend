@@ -5,6 +5,7 @@ import { FcGoogle } from 'react-icons/fc';
 import { FaApple } from 'react-icons/fa';
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuth } from "@/src/context/AuthContext";
 
 const Login: React.FC = () => {
@@ -15,20 +16,28 @@ const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
-    const user = login(email, password);
-    if (!user) {
-      setError('Invalid email or password.');
-      return;
+    setIsSubmitting(true);
+    try {
+      await login(email, password);
+      router.push("/");
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Invalid email or password.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
     }
-    router.push(user.role === "business" ? "/onboarding/grow" : "/");
   };
 
   return (
@@ -107,10 +116,11 @@ const Login: React.FC = () => {
 
         <button
           type="submit"
-          className="w-full bg-green-900 text-white py-2 rounded-md hover:bg-green-800 transition-colors flex items-center justify-center gap-2"
+          disabled={isSubmitting}
+          className="w-full bg-green-900 text-white py-2 rounded-md hover:bg-green-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           style={{color: 'white'}}
         >
-          Sign In
+          {isSubmitting ? "Signing in..." : "Sign In"}
           <span>&rarr;</span>
         </button>
 

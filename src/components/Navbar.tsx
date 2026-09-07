@@ -4,7 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { Menu, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useAuth } from "@/src/context/AuthContext";
+
+const BUSINESS_SUBMISSION_KEY = "business_submission";
+
+function hasSubmittedBusiness() {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    return localStorage.getItem(`${BUSINESS_SUBMISSION_KEY}:${user?.email || "guest"}`) === "true";
+  } catch {
+    return false;
+  }
+}
 
 const navItems: { label: string; href: string; match: string | null }[] = [
   { label: "Home", href: "/", match: "/" },
@@ -41,6 +53,20 @@ export default function Navbar() {
     logout();
     setOpen(false);
     router.push("/auth/login");
+  };
+
+  const handleAddBusiness = () => {
+    if (!user) {
+      toast.info("Please log in before adding your business.");
+      router.push("/auth/login");
+      return;
+    }
+    if (hasSubmittedBusiness()) {
+      toast.info("You have already submitted a business profile. Please wait for admin approval.");
+      router.push("/business-submitted");
+      return;
+    }
+    router.push("/onboarding/grow");
   };
 
   return (
@@ -100,12 +126,13 @@ export default function Navbar() {
         ) : (
           <Link href="/auth/login">Sign in</Link>
         )}
-        <Link
+        <button
+          type="button"
+          onClick={handleAddBusiness}
           className="rounded-lg bg-[#00663f] px-6 py-2.5 font-bold text-white"
-          href={user ? "/auth/register" : "/auth/login"}
         >
           Add Your Business
-        </Link>
+        </button>
       </div>
 
       <button className="ml-auto text-[#00663f] md:hidden" type="button" aria-label="Open navigation menu"><Menu size={20} /></button>

@@ -2,11 +2,18 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FaFacebookF, FaStore, FaUser } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
 import { FiEye, FiEyeOff, FiMail, FiShield, FiTrendingUp, FiUser as FiUserIcon } from 'react-icons/fi';
+import { toast } from "sonner";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
+import VerifyEmailModal from "./VerifyEmailModal";
+
 
 const Register: React.FC = () => {
+  const router = useRouter();
   const [isCustomer, setIsCustomer] = useState(true);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -15,10 +22,43 @@ const Register: React.FC = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    console.log({ isCustomer, fullName, email, password, confirmPassword, acceptTerms });
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    if (!acceptTerms) {
+      toast.error("Please accept the Terms of Service and Privacy Policy.");
+      return;
+    }
+
+    const role = isCustomer ? "CUSTOMER" : "BUSINESS_OWNER";
+
+    setIsSubmitting(true);
+    try {
+      await baseApi.post(ENDPOINTS.register, {
+        fullName,
+        email,
+        password,
+        role,
+      });
+
+      toast.success("Account created! Please check your email for the verification code.");
+      setShowVerifyModal(true);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Registration failed. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -196,9 +236,10 @@ const Register: React.FC = () => {
 
               <button
                 type="submit"
-                className="mt-2 h-11 w-full rounded-md bg-[#035f3a] text-white text-sm font-semibold shadow-[0_4px_12px_rgba(3,95,58,0.18)] hover:bg-[#024d2f] transition flex items-center justify-center gap-2"
+                disabled={isSubmitting}
+                className="mt-2 h-11 w-full rounded-md bg-[#035f3a] text-white text-sm font-semibold shadow-[0_4px_12px_rgba(3,95,58,0.18)] hover:bg-[#024d2f] transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Create Account
+                {isSubmitting ? "Creating account..." : "Create Account"}
               </button>
 
               <div className="flex items-center gap-3 py-2">
@@ -244,6 +285,16 @@ const Register: React.FC = () => {
           </form>
         </div>
       </main>
+
+      <VerifyEmailModal
+        open={showVerifyModal}
+        email={email}
+        onClose={() => setShowVerifyModal(false)}
+        onVerified={() => {
+          setShowVerifyModal(false);
+          router.push('/auth/login');
+        }}
+      />
     </div>
   );
 };

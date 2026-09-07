@@ -26,8 +26,8 @@ export default function OnboardingStepper() {
   );
 
   return (
-    <div className="relative flex items-start justify-between">
-      <div className="absolute left-0 right-0 top-4 h-px bg-slate-200" />
+    <div className="relative flex items-start justify-between gap-1 overflow-x-auto pb-1">
+      <div className="absolute left-4 right-4 top-4 h-0.5 bg-[#dcebe4]" />
 
       {onboardingSteps.map((step, index) => {
         const isActive = index === activeIndex;
@@ -37,7 +37,7 @@ export default function OnboardingStepper() {
           <Link
             key={step.href}
             href={step.href}
-            className="relative z-10 flex flex-1 flex-col items-center gap-2 last:flex-none"
+            className="relative z-10 flex min-w-[78px] flex-1 flex-col items-center gap-2 last:flex-none"
           >
             <span
               className={`flex h-8 w-8 items-center justify-center rounded-full border-2 bg-white text-xs font-semibold transition-colors ${
@@ -45,14 +45,14 @@ export default function OnboardingStepper() {
                   ? "border-[#00663f] bg-[#00663f] text-white"
                   : isActive
                     ? "border-[#00663f] text-[#00663f]"
-                    : "border-slate-300 text-slate-400"
+                    : "border-slate-300 text-slate-500"
               }`}
             >
               {isCompleted ? <FiCheck className="text-[14px]" /> : index + 1}
             </span>
             <span
               className={`whitespace-nowrap text-center text-xs font-medium ${
-                isActive || isCompleted ? "text-[#00663f]" : "text-slate-400"
+                isActive || isCompleted ? "text-[#00663f]" : "text-slate-500"
               }`}
             >
               {step.label}

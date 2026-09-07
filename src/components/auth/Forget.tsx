@@ -2,14 +2,33 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { FiMail } from 'react-icons/fi';
+import { toast } from "sonner";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
 
 export default function Forget() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    console.log({ email });
+
+    setIsSubmitting(true);
+    try {
+      await baseApi.post(ENDPOINTS.forgetPassword, { email });
+      toast.success("A verification code has been sent to your email.");
+      router.push(`/auth/verifyCode?email=${encodeURIComponent(email)}`);
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Could not send the reset code. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,15 +59,14 @@ export default function Forget() {
               required
             />
           </div>
-         <Link href="/auth/verifyCode">
-                   <button
-            type="submit"
-            className="mt-6 h-11 w-full rounded-lg bg-[#035f3a] text-white text-sm font-semibold shadow-[0_4px_12px_rgba(3,95,58,0.18)] hover:bg-[#024d2f] transition"
-          >
-            Send Reset Link
-          </button>
-         </Link>
 
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="mt-6 h-11 w-full rounded-lg bg-[#035f3a] text-white text-sm font-semibold shadow-[0_4px_12px_rgba(3,95,58,0.18)] hover:bg-[#024d2f] transition disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? "Sending..." : "Send Reset Code"}
+          </button>
         </form>
 
         <p className="mt-5 text-xs text-[#6f6f6f]">

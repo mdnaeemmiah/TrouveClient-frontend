@@ -2,17 +2,45 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FiEye, FiEyeOff, FiLock, FiRefreshCw } from 'react-icons/fi';
+import { toast } from "sonner";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
 
 export default function SetPass() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const email = searchParams.get('email') || '';
+  const otpCode = searchParams.get('otpCode') || '';
+
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    console.log({ newPassword, confirmPassword });
+
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await baseApi.post(ENDPOINTS.resetPassword, { email, otpCode, newPassword });
+      toast.success("Password reset successfully. Please sign in.");
+      router.push('/auth/login');
+    } catch (error: unknown) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "Could not reset your password. Please try again.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -53,8 +81,6 @@ export default function SetPass() {
                 {showNewPassword ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>
-            {/* <div className="mt-1 h-px w-full bg-[#e6e6e6]" /> */}
-            {/* <p className="mt-1 text-[10px] text-[#c0c0c0]">Enter your new password</p> */}
           </div>
 
           <div className="mt-4">
@@ -84,9 +110,10 @@ export default function SetPass() {
 
           <button
             type="submit"
-            className="mt-6 h-11 w-full rounded-lg bg-[#035f3a] text-white text-sm font-semibold shadow-[0_4px_12px_rgba(3,95,58,0.18)] hover:bg-[#024d2f] transition"
+            disabled={isSubmitting}
+            className="mt-6 h-11 w-full rounded-lg bg-[#035f3a] text-white text-sm font-semibold shadow-[0_4px_12px_rgba(3,95,58,0.18)] hover:bg-[#024d2f] transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Reset Password
+            {isSubmitting ? "Resetting..." : "Reset Password"}
           </button>
         </form>
 

@@ -1,10 +1,12 @@
 import VerifyCode from '@/src/components/auth/VerifyCode'
-import React from 'react'
+import React, { Suspense } from 'react'
 
 export default function page() {
   return (
     <div>
-      <VerifyCode></VerifyCode>
+      <Suspense fallback={null}>
+        <VerifyCode />
+      </Suspense>
     </div>
   )
 }

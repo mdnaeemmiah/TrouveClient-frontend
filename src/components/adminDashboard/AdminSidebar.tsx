@@ -13,6 +13,7 @@ import {
   FiUsers,
   FiX,
 } from "react-icons/fi";
+import { useAuth } from "@/src/context/AuthContext";
 
 type NavItem = {
   label: string;
@@ -37,10 +38,10 @@ type AdminSidebarProps = {
 export default function AdminSidebar({ open, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    document.cookie = "admin_auth=; path=/; max-age=0; samesite=lax";
+    logout();
     router.push("/auth/login");
   };
 
