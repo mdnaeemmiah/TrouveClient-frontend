@@ -6,6 +6,7 @@ import type { IconType } from "react-icons";
 import {
   FiAlertTriangle,
   FiBarChart2,
+  FiBriefcase,
   FiClock,
   FiHome,
   FiLogOut,
@@ -24,6 +25,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/adminDashboard/dashboard", icon: FiHome },
   { label: "User Management", href: "/adminDashboard/userManagement", icon: FiUsers },
+  { label: "Business Profiles", href: "/adminDashboard/businessProfiles", icon: FiBriefcase },
   { label: "Analytics", href: "/adminDashboard/analytics", icon: FiBarChart2 },
   { label: "Moderation", href: "/adminDashboard/moderation", icon: FiAlertTriangle },
   { label: "Pending Approvals", href: "/adminDashboard/pendingApprovals", icon: FiClock },

@@ -6,6 +6,7 @@ import { FiBell, FiMenu, FiUser } from "react-icons/fi";
 const titles: Record<string, string> = {
   "/adminDashboard/dashboard": "Dashboard",
   "/adminDashboard/userManagement": "User Management",
+  "/adminDashboard/businessProfiles": "Business Profiles",
   "/adminDashboard/analytics": "Analytics",
   "/adminDashboard/moderation": "Moderation",
   "/adminDashboard/pendingApprovals": "Pending Approvals",
@@ -32,7 +33,7 @@ export default function AdminHeader({ onMenuClick }: AdminHeaderProps) {
         >
           <FiMenu className="text-[20px]" />
         </button>
-        {/* <h1 className="text-xl font-semibold text-slate-800">{title}</h1> */}
+        <h1 className="text-xl font-semibold text-slate-800">{title}</h1>
       </div>
 
       <div className="flex items-center gap-4">

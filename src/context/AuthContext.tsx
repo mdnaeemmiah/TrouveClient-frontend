@@ -7,6 +7,7 @@ import { ENDPOINTS } from "@/src/api/endPoints";
 export type Role = "admin" | "customer" | "business";
 
 export interface AuthUser {
+  id?: string;
   email: string;
   role: Role;
   name: string;
@@ -39,6 +40,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
+    const cachedUser = localStorage.getItem(USER_KEY);
+    if (cachedUser) {
+      try {
+        // Keep protected layouts mounted while the session is revalidated.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setUser(JSON.parse(cachedUser) as AuthUser);
+      } catch {
+        localStorage.removeItem(USER_KEY);
+      }
+    }
     if (!token) {
       setLoading(false);
       return;
@@ -49,13 +60,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((response) => {
         const result = response.data?.data?.result ?? response.data?.data ?? response.data;
         const authUser: AuthUser = {
+          id: result?._id ?? result?.id,
           email: result?.email,
           role: normalizeRole(result?.role),
           name: result?.fullName ?? result?.name ?? result?.email,
           isEmailVerified: Boolean(result?.isEmailVerified),
         };
         localStorage.setItem(USER_KEY, JSON.stringify(authUser));
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time session hydration on mount, not a state sync loop
         setUser(authUser);
       })
       .catch(() => {
@@ -74,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accessToken: string | undefined = result?.accessToken;
     const rawUser = result?.user ?? result;
     const authUser: AuthUser = {
+      id: rawUser?._id ?? rawUser?.id,
       email: rawUser?.email ?? email,
       role: normalizeRole(rawUser?.role),
       name: rawUser?.fullName ?? rawUser?.name ?? email,
