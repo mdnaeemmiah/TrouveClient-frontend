@@ -1,16 +1,27 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Star, X } from "lucide-react";
+import { toast } from "sonner";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
+import { useAuth } from "@/src/context/AuthContext";
 
 const RATING_LABELS = ["Poor", "Fair", "Good", "Very Good", "Excellent"];
 
-export default function GiveReviewButton({ businessName }: { businessName: string }) {
+type GiveReviewButtonProps = {
+  businessName: string;
+  businessId?: string;
+};
+
+export default function GiveReviewButton({ businessName, businessId }: GiveReviewButtonProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [recommend, setRecommend] = useState(true);
   const [comment, setComment] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const displayRating = hoverRating || rating;
 
@@ -20,6 +31,30 @@ export default function GiveReviewButton({ businessName }: { businessName: strin
     setHoverRating(0);
     setRecommend(true);
     setComment("");
+  };
+
+  const handleSubmit = async () => {
+    if (!user) return toast.error("Please log in to submit a review.");
+    if (!businessId) return toast.error("Business ID is missing.");
+    if (rating === 0) return toast.error("Please select a rating.");
+    if (!comment.trim()) return toast.error("Please write a comment.");
+
+    setIsSubmitting(true);
+    try {
+      await baseApi.post(ENDPOINTS.postReview, {
+        businessId,
+        rating,
+        comment: comment.trim(),
+        recommend,
+      });
+      toast.success("Review submitted successfully!");
+      closeAndReset();
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
+      toast.error(Array.isArray(message) ? message.join(" ") : message || "Failed to submit review.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -34,7 +69,7 @@ export default function GiveReviewButton({ businessName }: { businessName: strin
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4"
           onClick={closeAndReset}
         >
           <div
@@ -128,10 +163,11 @@ export default function GiveReviewButton({ businessName }: { businessName: strin
               </button>
               <button
                 type="button"
-                onClick={closeAndReset}
-                className="rounded-lg bg-[#00663f] px-5 py-2.5 text-[13px] font-bold text-white hover:bg-[#00552f]"
+                onClick={() => void handleSubmit()}
+                disabled={isSubmitting}
+                className="rounded-lg bg-[#00663f] px-5 py-2.5 text-[13px] font-bold text-white hover:bg-[#00552f] disabled:opacity-60"
               >
-                Submit Review
+                {isSubmitting ? "Submitting..." : "Submit Review"}
               </button>
             </div>
           </div>
@@ -140,3 +176,4 @@ export default function GiveReviewButton({ businessName }: { businessName: strin
     </>
   );
 }
+

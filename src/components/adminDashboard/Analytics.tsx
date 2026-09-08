@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useEffect } from "react";
 import type { IconType } from "react-icons";
 import {
   FiCoffee,
@@ -12,12 +13,16 @@ import {
   FiShoppingBag,
   FiTrendingUp,
 } from "react-icons/fi";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
 
 type Range = "Last 30 Days" | "Quarterly" | "Yearly";
+type Timeframe = "30d" | "quarter" | "year";
 
 const ranges: Range[] = ["Last 30 Days", "Quarterly", "Yearly"];
+const timeframeByRange: Record<Range, Timeframe> = { "Last 30 Days": "30d", Quarterly: "quarter", Yearly: "year" };
 
-const stats: {
+type StatCard = {
   label: string;
   value: string;
   badge: string;
@@ -26,51 +31,10 @@ const stats: {
   iconColor: string;
   badgeBg: string;
   badgeColor: string;
-}[] = [
-  {
-    label: "Monthly Growth",
-    value: "2,840",
-    badge: "+12.4%",
-    icon: FiTrendingUp,
-    iconBg: "bg-[#e4f3ec]",
-    iconColor: "text-[#00663f]",
-    badgeBg: "bg-[#e4f3ec]",
-    badgeColor: "text-[#00663f]",
-  },
-  {
-    label: "Active Businesses",
-    value: "12,452",
-    badge: "85 New",
-    icon: FiHome,
-    iconBg: "bg-[#fdf1e2]",
-    iconColor: "text-[#b17a3a]",
-    badgeBg: "bg-[#fdf1e2]",
-    badgeColor: "text-[#b17a3a]",
-  },
-  {
-    label: "User Engagement",
-    value: "148.9k",
-    badge: "+5.2k",
-    icon: FiEye,
-    iconBg: "bg-slate-100",
-    iconColor: "text-slate-500",
-    badgeBg: "bg-slate-100",
-    badgeColor: "text-slate-500",
-  },
-  {
-    label: "Monthly Revenue",
-    value: "€42,850",
-    badge: "+18%",
-    icon: FiCreditCard,
-    iconBg: "bg-[#fbe2e2]",
-    iconColor: "text-[#c0524d]",
-    badgeBg: "bg-[#fbe2e2]",
-    badgeColor: "text-[#c0524d]",
-  },
-];
+};
 
-const growthMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
-const growthValues = [38, 30, 42, 58, 82, 66, 88];
+const fallbackGrowthMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+const fallbackGrowthValues = [38, 30, 42, 58, 82, 66, 88];
 
 const CHART_WIDTH = 600;
 const CHART_TOP = 16;
@@ -103,13 +67,9 @@ function buildSmoothPath(points: { x: number; y: number }[]) {
   return d;
 }
 
-const growthPoints = buildPoints(growthValues);
-const growthLinePath = buildSmoothPath(growthPoints);
-const growthAreaPath = `${growthLinePath} L ${growthPoints[growthPoints.length - 1].x} ${CHART_BASELINE} L ${growthPoints[0].x} ${CHART_BASELINE} Z`;
-
 type CategorySlice = { label: string; pct: number; color: string };
 
-const categories: CategorySlice[] = [
+const fallbackCategories: CategorySlice[] = [
   { label: "Restaurants", pct: 45, color: "#00663f" },
   { label: "Boutiques", pct: 30, color: "#d99a3d" },
   { label: "Services", pct: 25, color: "#4a5fa5" },
@@ -119,18 +79,21 @@ const DONUT_R = 70;
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_R;
 const DONUT_GAP = 4;
 
-let cumulative = 0;
-const donutSlices = categories.map((slice) => {
-  const length = (slice.pct / 100) * DONUT_CIRCUMFERENCE;
-  const offset = -cumulative;
-  cumulative += length;
-  return { ...slice, dasharray: `${Math.max(length - DONUT_GAP, 0)} ${DONUT_CIRCUMFERENCE}`, dashoffset: offset };
-});
+const fallbackWeekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const fallbackWeeklyViews = [55, 70, 88, 62, 78, 42, 30];
+const fallbackWeeklyActions = [35, 50, 64, 46, 55, 30, 48];
 
-const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const weeklyViews = [55, 70, 88, 62, 78, 42, 30];
-const weeklyActions = [35, 50, 64, 46, 55, 30, 48];
-const weeklyMax = Math.max(...weeklyViews, ...weeklyActions);
+type AnalyticsData = {
+  stats?: {
+    monthlyGrowth?: { count?: number; growthBadge?: string };
+    activeBusinesses?: { count?: number; badge?: string };
+    userEngagement?: { formatted?: string; growthBadge?: string };
+    platformInquiries?: { count?: number; growthBadge?: string };
+  };
+  growthTimeline?: { month: string; total: number }[];
+  categoryDistribution?: { totalBusinesses?: number; categories?: { name: string; percentage: number; color: string }[] };
+  weeklyEngagement?: { day: string; views: number; actions: number }[];
+};
 
 type Transaction = {
   name: string;
@@ -183,6 +146,42 @@ const transactions: Transaction[] = [
 
 export default function Analytics() {
   const [range, setRange] = useState<Range>("Last 30 Days");
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    baseApi.get(ENDPOINTS.adminAnalytics, { params: { timeframe: timeframeByRange[range] } })
+      .then((response) => {
+        if (isMounted) setAnalytics(response.data?.data ?? response.data);
+      })
+      .catch(() => {
+        if (isMounted) setAnalytics(null);
+      })
+    return () => { isMounted = false; };
+  }, [range]);
+
+  const stats: StatCard[] = [
+    { label: "Monthly Growth", value: String(analytics?.stats?.monthlyGrowth?.count ?? 0), badge: analytics?.stats?.monthlyGrowth?.growthBadge ?? "", icon: FiTrendingUp, iconBg: "bg-[#e4f3ec]", iconColor: "text-[#00663f]", badgeBg: "bg-[#e4f3ec]", badgeColor: "text-[#00663f]" },
+    { label: "Active Businesses", value: String(analytics?.stats?.activeBusinesses?.count ?? 0), badge: analytics?.stats?.activeBusinesses?.badge ?? "", icon: FiHome, iconBg: "bg-[#fdf1e2]", iconColor: "text-[#b17a3a]", badgeBg: "bg-[#fdf1e2]", badgeColor: "text-[#b17a3a]" },
+    { label: "User Engagement", value: analytics?.stats?.userEngagement?.formatted ?? "0", badge: analytics?.stats?.userEngagement?.growthBadge ?? "", icon: FiEye, iconBg: "bg-slate-100", iconColor: "text-slate-500", badgeBg: "bg-slate-100", badgeColor: "text-slate-500" },
+    { label: "Platform Inquiries", value: String(analytics?.stats?.platformInquiries?.count ?? 0), badge: analytics?.stats?.platformInquiries?.growthBadge ?? "", icon: FiCreditCard, iconBg: "bg-[#fbe2e2]", iconColor: "text-[#c0524d]", badgeBg: "bg-[#fbe2e2]", badgeColor: "text-[#c0524d]" },
+  ];
+  const growthMonths = analytics?.growthTimeline?.map((item) => item.month) ?? fallbackGrowthMonths;
+  const growthValues = analytics?.growthTimeline?.map((item) => item.total) ?? fallbackGrowthValues;
+  const growthPoints = buildPoints(growthValues);
+  const growthLinePath = buildSmoothPath(growthPoints);
+  const growthAreaPath = growthPoints.length ? `${growthLinePath} L ${growthPoints[growthPoints.length - 1].x} ${CHART_BASELINE} L ${growthPoints[0].x} ${CHART_BASELINE} Z` : "";
+  const categories: CategorySlice[] = analytics?.categoryDistribution?.categories?.map((category) => ({ label: category.name, pct: category.percentage, color: category.color })) ?? fallbackCategories;
+  const donutSlices = categories.map((slice, index) => {
+    const cumulative = categories.slice(0, index).reduce((sum, item) => sum + (item.pct / 100) * DONUT_CIRCUMFERENCE, 0);
+    const length = (slice.pct / 100) * DONUT_CIRCUMFERENCE;
+    const offset = -cumulative;
+    return { ...slice, dasharray: `${Math.max(length - DONUT_GAP, 0)} ${DONUT_CIRCUMFERENCE}`, dashoffset: offset };
+  });
+  const weekDays = analytics?.weeklyEngagement?.map((item) => item.day) ?? fallbackWeekDays;
+  const weeklyViews = analytics?.weeklyEngagement?.map((item) => item.views) ?? fallbackWeeklyViews;
+  const weeklyActions = analytics?.weeklyEngagement?.map((item) => item.actions) ?? fallbackWeeklyActions;
+  const weeklyMax = Math.max(...weeklyViews, ...weeklyActions, 1);
 
   return (
     <div className="space-y-6">

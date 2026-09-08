@@ -1,17 +1,92 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { FiCalendar, FiClock } from "react-icons/fi";
-import { upcomingBookings, pastBookings } from "@/src/data/bookings";
+import { ENDPOINTS } from "@/src/api/endPoints";
+import baseApi from "@/src/api/baseApi";
+import img1 from "@/src/assets/details/img1.png";
+import type { Booking } from "@/src/data/bookings";
 
 type Tab = "Upcoming" | "Past Bookings";
 const tabs: Tab[] = ["Upcoming", "Past Bookings"];
 
+type ApiBooking = {
+  _id?: string;
+  id?: string;
+  slug?: string;
+  serviceName?: string;
+  dateTime?: string;
+  status?: string;
+  business?: { name?: string; slug?: string; logo?: string; location?: { address?: string; city?: string } };
+  businessId?: { name?: string; slug?: string; logo?: string; location?: { address?: string; city?: string } } | string;
+};
+
+function getBookingList(payload: unknown): ApiBooking[] {
+  if (Array.isArray(payload)) return payload as ApiBooking[];
+  if (!payload || typeof payload !== "object") return [];
+
+  const response = payload as { data?: unknown; result?: unknown; bookings?: unknown };
+  if (Array.isArray(response.bookings)) return response.bookings as ApiBooking[];
+  if (Array.isArray(response.result)) return response.result as ApiBooking[];
+  if (Array.isArray(response.data)) return response.data as ApiBooking[];
+  if (response.data && typeof response.data === "object") return getBookingList(response.data);
+  return [];
+}
+
+function toBooking(item: ApiBooking, index: number): Booking {
+  const business = item.business || (typeof item.businessId === "object" ? item.businessId : undefined);
+  const date = item.dateTime ? new Date(item.dateTime) : null;
+  const validDate = date && !Number.isNaN(date.getTime()) ? date : null;
+
+  return {
+    slug: business?.slug || item.slug || item.businessId?.toString() || item._id || item.id || `booking-${index}`,
+    image: business?.logo || img1,
+    name: business?.name || "Business",
+    detail: item.serviceName || "Booking",
+    date: validDate ? validDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Date not provided",
+    time: validDate ? validDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "",
+    status: item.status === "CANCELLED" ? "Cancelled" : item.status === "COMPLETED" ? "Completed" : "Confirmed",
+    reference: item._id || item.id || "",
+    service: item.serviceName || "Booking",
+    guests: "",
+    address: [business?.location?.address, business?.location?.city].filter(Boolean).join(", "),
+    phone: "",
+    email: "",
+    notes: "",
+    cancellationPolicy: "",
+    arrivalInstructions: "",
+  };
+}
+
 export default function MyBookings() {
   const [activeTab, setActiveTab] = useState<Tab>("Upcoming");
-  const bookings = activeTab === "Upcoming" ? upcomingBookings : pastBookings;
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadBookings = async () => {
+      try {
+        const response = await baseApi.get(ENDPOINTS.getBookings);
+        if (isMounted) setBookings(getBookingList(response.data).map(toBooking));
+      } catch {
+        if (isMounted) setError("Unable to load your bookings.");
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    void loadBookings();
+    return () => { isMounted = false; };
+  }, []);
+
+  const visibleBookings = bookings.filter((booking) =>
+    activeTab === "Upcoming" ? booking.status === "Confirmed" : booking.status !== "Confirmed",
+  );
 
   return (
     <div>
@@ -37,13 +112,25 @@ export default function MyBookings() {
       </div>
 
       <div className="mt-6 space-y-4">
-        {bookings.length === 0 && (
+        {isLoading && (
+          <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
+            Loading bookings...
+          </div>
+        )}
+
+        {!isLoading && error && (
+          <div className="rounded-2xl bg-white p-8 text-center text-sm text-red-500 shadow-sm">
+            {error}
+          </div>
+        )}
+
+        {!isLoading && !error && visibleBookings.length === 0 && (
           <div className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
             No bookings to show.
           </div>
         )}
 
-        {bookings.map((booking) => (
+        {visibleBookings.map((booking) => (
           <div
             key={booking.slug}
             className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm"

@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FiBell, FiInfo, FiShield, FiUser } from "react-icons/fi";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
 
 type NotificationPref = {
   id: string;
@@ -38,7 +40,32 @@ const initialPreferences: NotificationPref[] = [
 ];
 
 export default function Settings() {
+  const [profile, setProfile] = useState({ fullName: "", email: "", phone: "", city: "" });
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [preferences, setPreferences] = useState(initialPreferences);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    baseApi.get(ENDPOINTS.getUserProfile)
+      .then((response) => {
+        if (!isMounted) return;
+        const user = response.data?.data ?? response.data;
+        setProfile({
+          fullName: user?.fullName ?? user?.name ?? "",
+          email: user?.email ?? "",
+          phone: user?.phone ?? user?.phoneNumber ?? "",
+          city: user?.city ?? user?.location?.city ?? "",
+        });
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingProfile(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const togglePreference = (id: string) => {
     setPreferences((prev) =>
@@ -65,7 +92,7 @@ export default function Settings() {
 
         <div className="mt-5 flex items-center gap-4">
           <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-slate-100 text-lg font-semibold text-slate-600">
-            JD
+            {profile.fullName ? profile.fullName.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase() : "--"}
           </span>
           <div>
             <button
@@ -83,7 +110,9 @@ export default function Settings() {
             <label className="text-sm text-slate-500">Full Name</label>
             <input
               type="text"
-              defaultValue="Jean Dubois"
+              value={profile.fullName}
+              onChange={(event) => setProfile((current) => ({ ...current, fullName: event.target.value }))}
+              disabled={isLoadingProfile}
               className="mt-1.5 w-full rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#00663f]/30"
             />
           </div>
@@ -91,7 +120,9 @@ export default function Settings() {
             <label className="text-sm text-slate-500">Email Address</label>
             <input
               type="email"
-              defaultValue="jean.dubois@example.com"
+              value={profile.email}
+              onChange={(event) => setProfile((current) => ({ ...current, email: event.target.value }))}
+              disabled={isLoadingProfile}
               className="mt-1.5 w-full rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#00663f]/30"
             />
           </div>
@@ -99,7 +130,9 @@ export default function Settings() {
             <label className="text-sm text-slate-500">Phone Number</label>
             <input
               type="tel"
-              defaultValue="+33 6 12 34 56 78"
+              value={profile.phone}
+              onChange={(event) => setProfile((current) => ({ ...current, phone: event.target.value }))}
+              disabled={isLoadingProfile}
               className="mt-1.5 w-full rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#00663f]/30"
             />
           </div>
@@ -107,7 +140,9 @@ export default function Settings() {
             <label className="text-sm text-slate-500">City</label>
             <input
               type="text"
-              defaultValue="Paris"
+              value={profile.city}
+              onChange={(event) => setProfile((current) => ({ ...current, city: event.target.value }))}
+              disabled={isLoadingProfile}
               className="mt-1.5 w-full rounded-lg bg-slate-100 px-3 py-2.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#00663f]/30"
             />
           </div>

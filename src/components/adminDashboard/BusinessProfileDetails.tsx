@@ -92,7 +92,7 @@ export default function BusinessProfileDetails() {
 
   return (
     <div className="space-y-6">
-      <Link href="/adminDashboard/businessProfiles" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00663f]"><FiArrowLeft />Back to business profiles</Link>
+      <Link href="/adminDashboard/pendingApprovals" className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-[#00663f]"><FiArrowLeft />Back to all business profiles</Link>
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
         <div className="relative h-48 bg-[#dcebe4]">
           {business.coverImage ? <img src={mediaUrl(business.coverImage)} alt="Business cover" className="h-full w-full object-cover" /> : null}

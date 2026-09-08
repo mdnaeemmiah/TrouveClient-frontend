@@ -48,9 +48,9 @@ export default async function Landing() {
           <p className="mb-5 w-fit rounded-full bg-[#e1eee8] px-3 py-1 text-[10px] font-extrabold uppercase text-[#00663f]">Find the best local businesses near you</p>
           <h1 className="text-[39px] font-bold leading-[1.08] tracking-tight md:text-[clamp(39px,4vw,54px)] lg:text-[60px]">Find trusted local<br />businesses with ease</h1>
           <p className="my-6 max-w-[470px] text-sm leading-relaxed text-[#50545a] md:text-[15px] lg:max-w-[520px] lg:text-[17px]">Discover the best local businesses, services and professionals near you and get in touch in just a few clicks.</p>
-          <form className="flex h-[58px] items-center rounded-[11px] bg-white py-2 pr-2 pl-3.5 text-[#94999c] shadow-[0_5px_17px_#21212a10]" action="#businesses">
+          <form className="flex h-[58px] items-center rounded-[11px] bg-white py-2 pr-2 pl-3.5 text-[#94999c] shadow-[0_5px_17px_#21212a10]" action="/search" method="get">
             <Search size={17} strokeWidth={2} />
-            <input className="min-w-0 flex-1 border-0 px-2.5 text-[13px] text-[#1c1d22] outline-0" aria-label="Search local businesses" placeholder="What are you looking for?" />
+            <input name="query" className="min-w-0 flex-1 border-0 px-2.5 text-[13px] text-[#1c1d22] outline-0" aria-label="Search local businesses" placeholder="What are you looking for?" />
             <button className="h-11 min-w-[83px] rounded-[9px] bg-[#00663f] text-[13px] font-bold text-white md:min-w-28" type="submit">Search</button>
           </form>
           <div className="mt-6 flex flex-wrap items-center gap-2.5 text-[11px] lg:text-xs">

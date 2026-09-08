@@ -23,7 +23,7 @@ import { useAuth } from "@/src/context/AuthContext";
 
 type FeedPost = {
   _id: string;
-  businessId?: string;
+  businessId?: string | { _id?: string; id?: string };
   title?: string;
   content?: string;
   attachments?: string[];
@@ -67,6 +67,10 @@ function mediaUrl(value: string) {
   if (/^(https?:|data:|blob:)/i.test(value)) return value;
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   return apiUrl ? new URL(value, apiUrl).toString() : value;
+}
+
+function getBusinessId(value: FeedPost["businessId"]) {
+  return typeof value === "string" ? value : value?._id || value?.id;
 }
 
 export default function Feed() {
@@ -248,26 +252,27 @@ export default function Feed() {
   };
 
   const toggleFollow = async (post: FeedPost) => {
-    if (!post.businessId)
+    const businessId = getBusinessId(post.businessId);
+    if (!businessId)
       return toast.error("This post has no business profile.");
     if (user?.role !== "customer") {
       return toast.error("Only customer accounts can follow businesses.");
     }
     const wasFollowing =
-      followedBusinesses[post.businessId] ?? Boolean(post.isFollowing);
+      followedBusinesses[businessId] ?? Boolean(post.isFollowing);
     setFollowedBusinesses((current) => ({
       ...current,
-      [post.businessId as string]: !wasFollowing,
+      [businessId]: !wasFollowing,
     }));
     try {
-      await baseApi.post(ENDPOINTS.followBusiness(post.businessId));
+      await baseApi.post(ENDPOINTS.followBusiness(businessId));
       toast.success(
         wasFollowing ? "Unfollowed business." : "Following business.",
       );
     } catch (error: unknown) {
       setFollowedBusinesses((current) => ({
         ...current,
-        [post.businessId as string]: wasFollowing,
+        [businessId]: wasFollowing,
       }));
       const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
       toast.error(Array.isArray(message) ? message.join(" ") : message || "Unable to update following status.");
@@ -339,8 +344,9 @@ export default function Feed() {
                 const Icon = fallbackIcons[index % fallbackIcons.length];
                 const attachment = post.attachments?.[0];
                 const liked = likedPosts[post._id] || false;
-                const isFollowing = post.businessId
-                  ? (followedBusinesses[post.businessId] ?? Boolean(post.isFollowing))
+                const businessId = getBusinessId(post.businessId);
+                const isFollowing = businessId
+                  ? (followedBusinesses[businessId] ?? Boolean(post.isFollowing))
                   : false;
                 return (
                   <article

@@ -16,6 +16,7 @@ export interface OpeningHour {
 
 export interface Business {
   id: string;
+  businessId?: string;
   name: string;
   category: string;
   location: string;
@@ -24,6 +25,9 @@ export interface Business {
   trustScore: number;
   image: StaticImageData;
   detailImage: StaticImageData;
+  gallery?: string[];
+  logo?: string;
+  coverImage?: string;
   additionalPhotosCount: number;
   description: string;
   amenities: string[];

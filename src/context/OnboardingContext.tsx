@@ -347,7 +347,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
 
   const submitBusiness = useCallback(async () => {
     if (localStorage.getItem(getBusinessSubmissionKey()) === "true") {
-      toast.info("You have already submitted a business profile. Please wait for admin approval.");
+      toast.info("You have already submitted a business profile. Checking its approval status.");
       return;
     }
 
@@ -460,6 +460,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(getBusinessSubmissionKey(), "true");
       toast.success("Business created successfully. You will be notified by email after admin approval.");
       resetForm();
+      router.push("/");
       return response.data;
     } catch (error: unknown) {
       const err = error as {

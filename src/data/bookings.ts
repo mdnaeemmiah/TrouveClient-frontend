@@ -5,7 +5,7 @@ import img3 from "@/src/assets/details/img3.png";
 
 export type Booking = {
   slug: string;
-  image: StaticImageData;
+  image: StaticImageData | string;
   name: string;
   detail: string;
   date: string;

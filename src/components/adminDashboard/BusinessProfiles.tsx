@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { FiArrowRight, FiBriefcase, FiLoader, FiMapPin, FiRefreshCw } from "react-icons/fi";
+import { useCallback, useEffect, useState } from "react";
+import { FiArrowRight, FiBriefcase, FiLoader, FiMapPin, FiRefreshCw, FiSearch } from "react-icons/fi";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 
@@ -20,15 +20,20 @@ type BusinessResponse = {
   data?: {
     items?: Business[];
     meta?: { total?: number; page?: number; limit?: number; totalPages?: number };
-  };
+  } | Business[];
   items?: Business[];
+  meta?: { total?: number; totalPages?: number };
 };
 
 function getBusinessData(payload: unknown) {
+  if (Array.isArray(payload)) return { items: payload, total: payload.length, totalPages: 1 };
   const response = payload as BusinessResponse;
+  const data = response.data;
+  if (Array.isArray(data)) return { items: data, total: data.length, totalPages: 1 };
   return {
-    items: response.data?.items || response.items || [],
-    total: response.data?.meta?.total ?? 0,
+    items: data?.items || response.items || [],
+    total: data?.meta?.total ?? response.meta?.total ?? response.items?.length ?? 0,
+    totalPages: data?.meta?.totalPages ?? response.meta?.totalPages,
   };
 }
 
@@ -45,25 +50,41 @@ function getOwnerLabel(ownerId: Business["ownerId"]) {
 export default function BusinessProfiles() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingBusinessId, setUpdatingBusinessId] = useState("");
 
-  const loadBusinesses = async () => {
+  const loadBusinesses = useCallback(async () => {
     setIsLoading(true);
     setError("");
     try {
-      const response = await baseApi.get(ENDPOINTS.getAllBusinesses);
+      const response = await baseApi.get(ENDPOINTS.allBusinessesProfile, {
+        params: {
+          page,
+          limit,
+          ...(search ? { search } : {}),
+          ...(status ? { status } : {}),
+          ...(categoryId ? { categoryId } : {}),
+        },
+      });
       const result = getBusinessData(response.data);
       setBusinesses(result.items);
       setTotal(result.total);
+      setTotalPages(result.totalPages || Math.ceil(result.total / limit));
     } catch (requestError: unknown) {
       const message = (requestError as { response?: { data?: { message?: string } } }).response?.data?.message;
       setError(message || "Unable to load business profiles.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, limit, search, status, categoryId]);
 
   const updateBusinessStatus = async (businessId: string, status: StatusAction) => {
     setUpdatingBusinessId(businessId);
@@ -83,7 +104,7 @@ export default function BusinessProfiles() {
     // Load the API-backed directory when the page mounts.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadBusinesses();
-  }, []);
+  }, [loadBusinesses]);
 
   return (
     <div className="space-y-6">
@@ -103,6 +124,28 @@ export default function BusinessProfiles() {
           Refresh
         </button>
       </div>
+
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          setPage(1);
+          setSearch(searchInput.trim());
+        }}
+        className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-[minmax(240px,1fr)_180px_220px_auto]"
+      >
+        <label className="relative block">
+          <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search by name, email, or city" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[#00663f]" />
+        </label>
+        <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#00663f]">
+          <option value="">All statuses</option>
+          <option value="PENDING_APPROVAL">Pending approval</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+        </select>
+        <input value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setPage(1); }} placeholder="Category ID" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#00663f]" />
+        <button type="submit" className="flex items-center justify-center gap-2 rounded-xl bg-[#00663f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#004f31]"><FiSearch /> Search</button>
+      </form>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="rounded-2xl bg-white p-5 shadow-sm">
@@ -169,6 +212,24 @@ export default function BusinessProfiles() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {!isLoading && !error && total > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm">
+          <label className="flex items-center gap-2 text-sm text-slate-500">
+            Per page
+            <select value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }} className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-700">
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+          <div className="flex items-center gap-3 text-sm text-slate-500">
+            <span>Page {page} of {Math.max(1, totalPages || Math.ceil(total / limit))}</span>
+            <button type="button" disabled={page === 1} onClick={() => setPage((current) => current - 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold disabled:opacity-40">Previous</button>
+            <button type="button" disabled={page >= (totalPages || Math.ceil(total / limit))} onClick={() => setPage((current) => current + 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 font-semibold disabled:opacity-40">Next</button>
           </div>
         </div>
       )}

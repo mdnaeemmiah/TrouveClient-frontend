@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { IconType } from "react-icons";
 import {
   FiAlertTriangle,
@@ -8,6 +11,8 @@ import {
   FiUserPlus,
   FiUsers,
 } from "react-icons/fi";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
 
 type StatCard = {
   label: string;
@@ -19,54 +24,19 @@ type StatCard = {
   iconColor: string;
 };
 
-const stats: StatCard[] = [
-  {
-    label: "Total Businesses",
-    value: "2,845",
-    icon: FiBriefcase,
-    badge: "+12.5%",
-    iconBg: "bg-[#e4f3ec]",
-    iconColor: "text-[#00663f]",
-  },
-  {
-    label: "Total Users",
-    value: "14,202",
-    icon: FiUsers,
-    badge: "+3.2%",
-    iconBg: "bg-slate-100",
-    iconColor: "text-slate-500",
-  },
-  {
-    label: "Pending Approvals",
-    value: "48",
-    icon: FiSettings,
-    highlight: true,
-    iconBg: "bg-white/20",
-    iconColor: "text-white",
-  },
-  {
-    label: "Platform Inquiries",
-    value: "156",
-    icon: FiMessageSquare,
-    iconBg: "bg-[#fdf1e2]",
-    iconColor: "text-[#d99a3d]",
-  },
-];
-
 type Registration = {
+  _id: string;
   initials: string;
   name: string;
   category: string;
-  date: string;
-  status: "Pending" | "Approved";
+  dateJoined: string;
+  status: string;
 };
 
-const registrations: Registration[] = [
-  { initials: "LB", name: "Le Bistro Lyon", category: "Restaurant", date: "May 24, 2024", status: "Pending" },
-  { initials: "ES", name: "Eco-Soin Paris", category: "Wellness", date: "May 23, 2024", status: "Approved" },
-  { initials: "AM", name: "Auto-Mecha Marseille", category: "Automotive", date: "May 23, 2024", status: "Pending" },
-  { initials: "TC", name: "Tech-Conseil", category: "IT Services", date: "May 22, 2024", status: "Approved" },
-];
+type DashboardResponse = {
+  stats?: Record<string, { count?: number; growthPercentage?: number }>;
+  recentRegistrations?: Array<Partial<Registration>>;
+};
 
 type Activity = {
   icon: IconType;
@@ -115,6 +85,33 @@ const today = new Date().toLocaleDateString("en-US", {
 });
 
 export default function Dashboard() {
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    baseApi.get(ENDPOINTS.adminDashboard)
+      .then((response) => {
+        setDashboard(response.data?.data ?? response.data);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const statData = dashboard?.stats ?? {};
+  const stats: StatCard[] = [
+    { label: "Total Businesses", value: String(statData.totalBusinesses?.count ?? 0), icon: FiBriefcase, badge: statData.totalBusinesses?.growthPercentage !== undefined ? `+${statData.totalBusinesses.growthPercentage}%` : undefined, iconBg: "bg-[#e4f3ec]", iconColor: "text-[#00663f]" },
+    { label: "Total Users", value: String(statData.totalUsers?.count ?? 0), icon: FiUsers, badge: statData.totalUsers?.growthPercentage !== undefined ? `+${statData.totalUsers.growthPercentage}%` : undefined, iconBg: "bg-slate-100", iconColor: "text-slate-500" },
+    { label: "Pending Approvals", value: String(statData.pendingApprovals?.count ?? 0), icon: FiSettings, badge: statData.pendingApprovals?.growthPercentage !== undefined ? `+${statData.pendingApprovals.growthPercentage}%` : undefined, highlight: true, iconBg: "bg-white/20", iconColor: "text-white" },
+    { label: "Platform Inquiries", value: String(statData.platformInquiries?.count ?? 0), icon: FiMessageSquare, badge: statData.platformInquiries?.growthPercentage !== undefined ? `+${statData.platformInquiries.growthPercentage}%` : undefined, iconBg: "bg-[#fdf1e2]", iconColor: "text-[#d99a3d]" },
+  ];
+  const registrations = (dashboard?.recentRegistrations ?? []).map((registration, index) => ({
+    _id: registration._id || String(index),
+    initials: registration.initials || registration.name?.slice(0, 2).toUpperCase() || "B",
+    name: registration.name || "Unnamed business",
+    category: registration.category || "Business",
+    dateJoined: registration.dateJoined || "Not provided",
+    status: registration.status || "UNKNOWN",
+  }));
+
   return (
     <div className="space-y-6">
       <div>
@@ -175,8 +172,8 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {registrations.map((reg) => (
-                  <tr key={reg.name} className="border-b border-slate-50 last:border-0">
+                {isLoading ? <tr><td colSpan={4} className="py-8 text-center text-slate-500">Loading registrations...</td></tr> : registrations.map((reg) => (
+                  <tr key={reg._id} className="border-b border-slate-50 last:border-0">
                     <td className="py-3">
                       <div className="flex items-center gap-3">
                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#e4f3ec] text-xs font-semibold text-[#00663f]">
@@ -186,16 +183,16 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td className="py-3 text-slate-500">{reg.category}</td>
-                    <td className="py-3 text-slate-500">{reg.date}</td>
+                    <td className="py-3 text-slate-500">{reg.dateJoined}</td>
                     <td className="py-3">
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                          reg.status === "Approved"
+                          reg.status === "APPROVED"
                             ? "bg-[#e4f3ec] text-[#00663f]"
                             : "bg-slate-100 text-slate-500"
                         }`}
                       >
-                        {reg.status}
+                        {reg.status === "PENDING_APPROVAL" ? "Pending approval" : reg.status}
                       </span>
                     </td>
                   </tr>
@@ -205,7 +202,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
+        {/* <div className="rounded-2xl bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-[#00663f]">Recent Activity</h2>
 
           <ul className="mt-4 space-y-4">
@@ -224,7 +221,7 @@ export default function Dashboard() {
               );
             })}
           </ul>
-        </div>
+        </div> */}
       </div>
     </div>
   );

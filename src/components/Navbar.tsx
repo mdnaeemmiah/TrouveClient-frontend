@@ -62,7 +62,7 @@ export default function Navbar() {
       return;
     }
     if (hasSubmittedBusiness()) {
-      toast.info("You have already submitted a business profile. Please wait for admin approval.");
+      toast.info("You have already submitted a business profile. Checking its approval status.");
       router.push("/business-submitted");
       return;
     }

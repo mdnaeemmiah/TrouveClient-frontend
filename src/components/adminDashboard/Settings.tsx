@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { IconType } from "react-icons";
 import {
   FiAtSign,
@@ -13,6 +13,8 @@ import {
   FiSliders,
   FiZap,
 } from "react-icons/fi";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
@@ -100,6 +102,7 @@ function ToggleRow({
 }
 
 export default function Settings() {
+  const [profileEmail, setProfileEmail] = useState("");
   const [require2fa, setRequire2fa] = useState(true);
   const [autoApprove, setAutoApprove] = useState(true);
   const [aiReview, setAiReview] = useState(true);
@@ -107,6 +110,15 @@ export default function Settings() {
   const [inAppAlerts, setInAppAlerts] = useState(true);
   const [emailDigests, setEmailDigests] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(false);
+
+  useEffect(() => {
+    baseApi.get(ENDPOINTS.getUserProfile)
+      .then((response) => {
+        const user = response.data?.data?.user ?? response.data?.data ?? response.data;
+        setProfileEmail(user?.email ?? "");
+      })
+      .catch(() => setProfileEmail(""));
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -131,7 +143,9 @@ export default function Settings() {
             <label className="text-xs font-medium text-slate-500">Contact Email</label>
             <input
               type="email"
-              defaultValue="admin@motorbridge-directory.fr"
+              value={profileEmail}
+              onChange={(event) => setProfileEmail(event.target.value)}
+              placeholder="Loading current user email..."
               className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none focus:border-[#00663f]"
             />
           </div>
