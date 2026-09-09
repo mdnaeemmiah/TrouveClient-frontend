@@ -207,8 +207,17 @@ export default async function BusinessDetailPage({
             <div className="rounded-2xl border border-[#eef0f1] bg-white p-5">
               <h3 className="mb-4 text-[15px] font-bold text-[#1c1d22]">Contact this business</h3>
               <div className="flex flex-col gap-2.5">
-                <FollowBusinessButton businessId={business.businessId} businessName={business.name} initialFollowing={Boolean((business as { isFollowing?: boolean }).isFollowing)} />
-                <GiveReviewButton businessName={business.name} businessId={resolvedBusiness.businessId} />
+                {/* <FollowBusinessButton businessId={business.businessId} businessName={business.name} initialFollowing={Boolean((business as { isFollowing?: boolean }).isFollowing)} /> */}
+                <FollowBusinessButton
+                  businessId={resolvedBusiness.businessId || (business as { businessId?: string }).businessId || id}
+                  slug={id}
+                  businessName={business.name}
+                  initialFollowing={Boolean(resolvedBusiness.isFollowing ?? (business as { isFollowing?: boolean }).isFollowing)}
+                />
+                <GiveReviewButton
+                  businessName={business.name}
+                  businessId={resolvedBusiness.businessId || (business as { businessId?: string }).businessId}
+                />
                 <BookTableButton
                   businessId={resolvedBusiness.businessId}
                   businessName={business.name}

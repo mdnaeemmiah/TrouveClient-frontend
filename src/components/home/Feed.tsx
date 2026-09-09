@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   ChevronDown,
@@ -20,6 +21,12 @@ import {
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { useAuth } from "@/src/context/AuthContext";
+import {
+  getStoredFollowMap,
+  getStoredFollowState,
+  setStoredFollowState,
+  subscribeToFollowChanges,
+} from "@/src/utils/followStorage";
 
 type FeedPost = {
   _id: string;
@@ -69,8 +76,19 @@ function mediaUrl(value: string) {
   return apiUrl ? new URL(value, apiUrl).toString() : value;
 }
 
-function getBusinessId(value: FeedPost["businessId"]) {
-  return typeof value === "string" ? value : value?._id || value?.id;
+function getBusinessId(value: unknown): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === "string") return value;
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    return (
+      (typeof obj._id === "string" && obj._id) ||
+      (typeof obj.id === "string" && obj.id) ||
+      (typeof obj.businessId === "string" && obj.businessId) ||
+      undefined
+    );
+  }
+  return undefined;
 }
 
 export default function Feed() {
@@ -88,7 +106,19 @@ export default function Feed() {
   );
   const [followedBusinesses, setFollowedBusinesses] = useState<
     Record<string, boolean>
-  >({});
+  >(() => getStoredFollowMap());
+
+  useEffect(() => {
+    setFollowedBusinesses(getStoredFollowMap());
+    const unsubscribe = subscribeToFollowChanges((bizId, isFollowing, aliasId) => {
+      setFollowedBusinesses((prev) => {
+        const next = { ...prev, [bizId]: isFollowing };
+        if (aliasId) next[aliasId] = isFollowing;
+        return next;
+      });
+    });
+    return unsubscribe;
+  }, []);
   const [reminderPost, setReminderPost] = useState<FeedPost | null>(null);
   const [reminderDate, setReminderDate] = useState("");
   const [reminderTime, setReminderTime] = useState("");
@@ -97,6 +127,24 @@ export default function Feed() {
   const [reportCategory, setReportCategory] = useState<ReportCategory>("INAPPROPRIATE");
   const [reportDetails, setReportDetails] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [popularCategories, setPopularCategories] = useState<{ _id?: string; name: string }[]>([]);
+
+  useEffect(() => {
+    baseApi
+      .get(ENDPOINTS.popularCategories)
+      .then((res) => {
+        const payload = res.data?.data ?? res.data;
+        const list = Array.isArray(payload)
+          ? payload
+          : (payload as { categories?: { _id?: string; name: string }[] })?.categories || [];
+        if (list.length > 0) {
+          setPopularCategories(list);
+        }
+      })
+      .catch(() => {
+        // keep static fallback
+      });
+  }, []);
 
   const loadPosts = useCallback(
     async (nextPage = 1, append = false) => {
@@ -252,28 +300,50 @@ export default function Feed() {
   };
 
   const toggleFollow = async (post: FeedPost) => {
-    const businessId = getBusinessId(post.businessId);
+    const rawPost = post as unknown as Record<string, unknown>;
+    const businessId =
+      getBusinessId(post.businessId) ||
+      getBusinessId(rawPost.business) ||
+      getBusinessId(rawPost.businessProfile);
     if (!businessId)
       return toast.error("This post has no business profile.");
     if (user?.role !== "customer") {
       return toast.error("Only customer accounts can follow businesses.");
     }
+    const currentStored = getStoredFollowState(businessId);
     const wasFollowing =
-      followedBusinesses[businessId] ?? Boolean(post.isFollowing);
+      typeof currentStored === "boolean"
+        ? currentStored
+        : (followedBusinesses[businessId] ?? Boolean(post.isFollowing));
+    const nextFollowing = !wasFollowing;
+
     setFollowedBusinesses((current) => ({
       ...current,
-      [businessId]: !wasFollowing,
+      [businessId]: nextFollowing,
     }));
+    setStoredFollowState(businessId, nextFollowing);
+
     try {
-      await baseApi.post(ENDPOINTS.followBusiness(businessId));
+      const res = await baseApi.post(ENDPOINTS.followBusiness(businessId));
+      const resData = res.data?.data ?? res.data;
+      const serverState = resData?.isFollowing;
+      const finalState = typeof serverState === "boolean" ? serverState : nextFollowing;
+
+      setFollowedBusinesses((current) => ({
+        ...current,
+        [businessId]: finalState,
+      }));
+      setStoredFollowState(businessId, finalState);
+
       toast.success(
-        wasFollowing ? "Unfollowed business." : "Following business.",
+        finalState ? "Following business." : "Unfollowed business.",
       );
     } catch (error: unknown) {
       setFollowedBusinesses((current) => ({
         ...current,
         [businessId]: wasFollowing,
       }));
+      setStoredFollowState(businessId, wasFollowing);
       const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
       toast.error(Array.isArray(message) ? message.join(" ") : message || "Unable to update following status.");
     }
@@ -285,25 +355,28 @@ export default function Feed() {
         <aside className="space-y-5 lg:order-1">
           <div className="rounded-2xl border border-[#eef0f1] bg-white p-5">
             <h2 className="text-[15px] font-bold text-[#00663f]">
-              Categories to Follow
+              Popular Categories
             </h2>
             <div className="mt-3 flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  className="rounded-full bg-[#f1f2f4] px-3 py-1.5 text-[12px] font-medium text-[#3a3d40] hover:bg-[#e7e8eb]"
+              {(popularCategories.length > 0
+                ? popularCategories.map((c) => c.name)
+                : categories
+              ).map((categoryName) => (
+                <Link
+                  key={categoryName}
+                  href={`/search?query=${encodeURIComponent(categoryName)}`}
+                  className="rounded-full bg-[#f1f2f4] px-3 py-1.5 text-[12px] font-medium text-[#3a3d40] transition hover:bg-[#00663f] hover:text-white"
                 >
-                  {category}
-                </button>
+                  {categoryName}
+                </Link>
               ))}
             </div>
-            <button
-              type="button"
-              className="mt-3 text-[12px] font-semibold text-[#00663f] hover:underline"
+            <Link
+              href="/#categories"
+              className="mt-3 inline-block text-[12px] font-semibold text-[#00663f] hover:underline"
             >
               See all categories
-            </button>
+            </Link>
           </div>
           <div className="rounded-2xl border border-[#eef0f1] bg-white p-5">
             <h2 className="text-[15px] font-bold text-[#00663f]">
@@ -344,9 +417,16 @@ export default function Feed() {
                 const Icon = fallbackIcons[index % fallbackIcons.length];
                 const attachment = post.attachments?.[0];
                 const liked = likedPosts[post._id] || false;
-                const businessId = getBusinessId(post.businessId);
+                const rawPost = post as unknown as Record<string, unknown>;
+                const businessId =
+                  getBusinessId(post.businessId) ||
+                  getBusinessId(rawPost.business) ||
+                  getBusinessId(rawPost.businessProfile);
+                const storedFollow = businessId ? getStoredFollowState(businessId) : null;
                 const isFollowing = businessId
-                  ? (followedBusinesses[businessId] ?? Boolean(post.isFollowing))
+                  ? (typeof storedFollow === "boolean"
+                      ? storedFollow
+                      : (followedBusinesses[businessId] ?? Boolean(post.isFollowing)))
                   : false;
                 return (
                   <article

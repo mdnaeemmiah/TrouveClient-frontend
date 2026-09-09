@@ -6,76 +6,109 @@ import { toast } from "sonner";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { useAuth } from "@/src/context/AuthContext";
+import {
+  getStoredFollowState,
+  setStoredFollowState,
+  subscribeToFollowChanges,
+} from "@/src/utils/followStorage";
 
-type FollowBusinessButtonProps = { businessId?: string; businessName: string; initialFollowing?: boolean };
+type FollowBusinessButtonProps = {
+  businessId?: string;
+  slug?: string;
+  businessName: string;
+  initialFollowing?: boolean;
+};
 
-const FOLLOW_STORAGE_KEY = "followed-businesses";
-
-function getStoredFollowState(businessId: string): boolean | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const saved = JSON.parse(localStorage.getItem(FOLLOW_STORAGE_KEY) || "{}") as Record<string, boolean>;
-    return businessId in saved ? saved[businessId] : null;
-  } catch {
-    return null;
-  }
-}
-
-function setStoredFollowState(businessId: string, value: boolean) {
-  if (typeof window === "undefined") return;
-  try {
-    const saved = JSON.parse(localStorage.getItem(FOLLOW_STORAGE_KEY) || "{}") as Record<string, boolean>;
-    saved[businessId] = value;
-    localStorage.setItem(FOLLOW_STORAGE_KEY, JSON.stringify(saved));
-  } catch {
-    // ignore
-  }
-}
-
-export default function FollowBusinessButton({ businessId, businessName, initialFollowing = false }: FollowBusinessButtonProps) {
+export default function FollowBusinessButton({
+  businessId,
+  slug,
+  businessName,
+  initialFollowing = false,
+}: FollowBusinessButtonProps) {
   const { user } = useAuth();
+  const effectiveId = businessId || slug || businessName.toLowerCase().replace(/\s+/g, "-");
+
   const [isFollowing, setIsFollowing] = useState<boolean>(() => {
-    // On first render: prefer localStorage over server-rendered prop
-    if (!businessId) return Boolean(initialFollowing);
-    const stored = getStoredFollowState(businessId);
+    const stored = getStoredFollowState(businessId, slug || effectiveId);
     return stored !== null ? stored : Boolean(initialFollowing);
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hasFetchedRef = useRef(false);
 
-  // Fetch real follow status from API once (after login)
+  // Sync state if businessId or slug changes or stored state exists
+  useEffect(() => {
+    const stored = getStoredFollowState(businessId, slug || effectiveId);
+    if (stored !== null) {
+      setIsFollowing(stored);
+    }
+  }, [businessId, slug, effectiveId]);
+
+  // Subscribe to changes across components and storage
+  useEffect(() => {
+    const unsubscribe = subscribeToFollowChanges((changedId, nextFollowing, aliasId) => {
+      if (
+        changedId === businessId ||
+        changedId === slug ||
+        changedId === effectiveId ||
+        aliasId === businessId ||
+        aliasId === slug ||
+        aliasId === effectiveId
+      ) {
+        setIsFollowing(nextFollowing);
+      }
+    });
+    return unsubscribe;
+  }, [businessId, slug, effectiveId]);
+
+  // Fetch real follow status from API once per business mount when user is authenticated
   useEffect(() => {
     if (!businessId || hasFetchedRef.current || !user) return;
     hasFetchedRef.current = true;
 
     baseApi
-      .get<{ data?: { isFollowing?: boolean }; isFollowing?: boolean }>(ENDPOINTS.getBusinessById(businessId))
+      .get(ENDPOINTS.getBusinessById(businessId))
       .then((res) => {
-        const serverFollowing = res.data?.data?.isFollowing ?? res.data?.isFollowing;
+        const payload = res.data?.data ?? res.data;
+        const raw = (payload && !Array.isArray(payload) && "_id" in payload ? payload : payload?.business || payload) as Record<string, unknown> | undefined;
+        const serverFollowing = raw?.isFollowing ?? raw?.following ?? raw?.followed ?? raw?.isFollowed;
+        // Only update if server specifically confirms true, or if no local preference has been stored yet
         if (typeof serverFollowing === "boolean") {
-          setIsFollowing(serverFollowing);
-          setStoredFollowState(businessId, serverFollowing);
+          const stored = getStoredFollowState(businessId, slug || effectiveId);
+          if (stored === null || serverFollowing === true) {
+            setIsFollowing(serverFollowing);
+            setStoredFollowState(effectiveId, serverFollowing, businessId);
+          }
         }
       })
       .catch(() => {
-        // silently ignore - keep localStorage/initialFollowing state
+        // keep current localStorage state on error
       });
-  }, [businessId, user]);
+  }, [businessId, slug, effectiveId, user]);
 
   const toggleFollow = async () => {
-    if (!businessId) return toast.error("This business profile has no valid ID.");
+    const targetId = businessId || effectiveId;
+    if (!targetId) return toast.error("This business profile has no valid ID.");
     if (user?.role !== "customer") return toast.error("Only customer accounts can follow businesses.");
+    
     const previous = isFollowing;
     const next = !previous;
+    
     setIsFollowing(next);
-    if (businessId) setStoredFollowState(businessId, next);
+    setStoredFollowState(effectiveId, next, businessId);
     setIsSubmitting(true);
+
     try {
-      await baseApi.post(ENDPOINTS.followBusiness(businessId));
-      toast.success(previous ? `Unfollowed ${businessName}.` : `Following ${businessName}.`);
+      const res = await baseApi.post(ENDPOINTS.followBusiness(targetId));
+      const resData = res.data?.data ?? res.data;
+      const serverState = resData?.isFollowing;
+      const finalState = typeof serverState === "boolean" ? serverState : next;
+      
+      setIsFollowing(finalState);
+      setStoredFollowState(effectiveId, finalState, businessId);
+      toast.success(finalState ? `Following ${businessName}.` : `Unfollowed ${businessName}.`);
     } catch (error: unknown) {
       setIsFollowing(previous);
-      if (businessId) setStoredFollowState(businessId, previous);
+      setStoredFollowState(effectiveId, previous, businessId);
       const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
       toast.error(Array.isArray(message) ? message.join(" ") : message || "Unable to update following status.");
     } finally {
@@ -88,7 +121,7 @@ export default function FollowBusinessButton({ businessId, businessName, initial
       type="button"
       onClick={() => void toggleFollow()}
       disabled={isSubmitting}
-      className={`flex items-center justify-center gap-2 rounded-lg border py-2.5 text-[13px] font-bold disabled:opacity-60 ${
+      className={`flex items-center justify-center gap-2 rounded-lg border py-2.5 text-[13px] font-bold disabled:opacity-60 transition ${
         isFollowing ? "border-[#00663f] bg-[#00663f] text-white" : "border-[#d7d9db] text-[#3a3d40] hover:bg-[#f7f7fa]"
       }`}
     >

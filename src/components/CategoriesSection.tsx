@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 export type Category = {
@@ -47,14 +48,19 @@ export default function CategoriesSection({ categories, assetsOrigin }: { catego
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-5">
         {visibleCategories.map(({ _id, name, icon, description, businessCount }, index) => (
-          <div title={description} className="flex min-h-[175px] flex-col items-center rounded-2xl border border-[#eef0f1] bg-white px-3 pt-6 pb-4 shadow-[0_4px_8px_#10101005] lg:min-h-[190px]" key={_id}>
+          <Link
+            href={`/search?query=${encodeURIComponent(name)}`}
+            title={description}
+            className="flex min-h-[175px] flex-col items-center rounded-2xl border border-[#eef0f1] bg-white px-3 pt-6 pb-4 shadow-[0_4px_8px_#10101005] transition hover:border-[#00663f] hover:shadow-md lg:min-h-[190px]"
+            key={_id}
+          >
             <span className={`mb-4 grid h-12 w-12 place-items-center rounded-xl ${CATEGORY_TONES[index % CATEGORY_TONES.length]}`}>
               <img className="h-[22px] w-[22px]" src={`${assetsOrigin}${icon}`} alt="" aria-hidden width={22} height={22} />
             </span>
             <strong className="text-[13px] tracking-tight lg:text-[15px]">{name}</strong>
             <p className="mt-1.5 line-clamp-2 text-center text-[9px] leading-snug text-[#8a8f94] lg:text-[10px]">{description}</p>
             <small className="mt-2 text-[10px] text-[#676d73] lg:text-[11px]">{businessCount} businesses</small>
-          </div>
+          </Link>
         ))}
       </div>
     </section>

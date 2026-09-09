@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Menu, User } from "lucide-react";
@@ -70,7 +70,7 @@ export default function Navbar() {
   };
 
   return (
-    <header className="flex h-[72px] items-center gap-9 border-b border-[#f0f1f2] bg-white px-6 lg:px-[max(30px,calc((100vw-1400px)/2))]">
+    <header className="sticky top-0 z-50 flex h-[72px] items-center gap-9 border-b border-[#f0f1f2] bg-white px-6 shadow-xs lg:px-[max(30px,calc((100vw-1400px)/2))]">
       <Link className="text-xl font-extrabold tracking-tight text-[#00663f] lg:text-[22px]" href="/#top">TrouveClients.fr</Link>
       <nav className="hidden h-full items-center gap-7 text-xs md:flex lg:text-[13px]" aria-label="Primary navigation">
         {navItems.map((item) => {
@@ -104,7 +104,7 @@ export default function Navbar() {
               <User size={16} />
             </button>
             {open && (
-              <div className="absolute right-0 top-11 w-52 rounded-lg border border-[#eef0f1] bg-white py-2 shadow-[0_8px_22px_#1a1a1a14]">
+              <div className="absolute right-0 top-11 z-50 w-52 rounded-lg border border-[#eef0f1] bg-white py-2 shadow-[0_8px_22px_#1a1a1a14]">
                 <p className="truncate px-4 py-1.5 text-[11px] text-[#8b9292]">{user.email}</p>
                 <Link
                   href={dashboardHref}

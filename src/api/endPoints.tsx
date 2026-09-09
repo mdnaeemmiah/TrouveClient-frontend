@@ -42,17 +42,21 @@ export const ENDPOINTS = {
 
   getAllBusinesses: "/admin/businesses",
   getSingleBusiness: (businessId: string) => `/admin/businesses/${businessId}`,
-  updateStatus: (businessId: string) =>
-    `/admin/businesses/${businessId}/status`,
+  updateStatus: (businessId: string) =>`/admin/businesses/${businessId}/status`,
 
   searchBusinesses: "/ai/search",
-  compareBusinesses: "/compare",
+  compareBusinesses: "/ai/compare",
   historyMarketing: "/marketing/history",
 
   bookings: "/bookings",
+  bookingRequests: "/bookings/my-requests",
   getBookings: "/bookings/my-history",
   recentlyVisited: "/businesses/recent-visits",
   postReview: "/reviews",
+  getReviews: "/reviews/my-reviews",
+  getReviewById: (reviewId: string) => `/reviews/business/${reviewId}`,
+  deleteReview: (reviewId: string) => `/reviews/${reviewId}`,
+  replyCustomerReview: (reviewId: string) => `/reviews/${reviewId}/reply`,
 
   getMyProfileBussinesses: "/businesses/my-profile",
   pendingApproval: "/businesses/admin/pending",
@@ -76,7 +80,8 @@ export const ENDPOINTS = {
   restoreTrash: (trashId: string) => `/admin/trash/${trashId}/restore`,
 
   businessAnalytics: `/business/my-profile/analytics`,
+  reputationCenter: `/reviews/reputation-center`,
+  aiMarketing: `/ai/marketing`,
+  marketingHistory: `/ai/marketing/history`,
 
-
-  
 };

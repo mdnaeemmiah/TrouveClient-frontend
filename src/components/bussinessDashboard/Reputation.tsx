@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { IconType } from "react-icons";
 import {
@@ -13,17 +13,93 @@ import {
   FiStar,
   FiZap,
 } from "react-icons/fi";
+import { useEffect, useState } from "react";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
 
-const trustScore = { value: 92, change: "+4.2% since last month" };
+// Shape expected from API at /reviews/reputation-center
+type ReputationCenterApi = {
+  trustScore: {
+    currentScore: number;
+    growthPercentage: number;
+    percentileRank: string;
+  };
+  trustScoreHistory: { month: string; score: number }[];
+  aiSentiment: {
+    positiveTags: string[];
+    negativeTags: string[];
+    recentHighlight?: { author: string; rating: number; comment: string; timestamp: string } | null;
+  };
+  recentReviews: {
+    _id: string;
+    customerId?: string | { _id?: string; fullName?: string; name?: string; email?: string } | Record<string, unknown>;
+    businessId: string;
+    rating: number;
+    comment: string;
+    createdAt: string;
+    ownerReply?: string;
+    ownerRepliedAt?: string;
+  }[];
+};
 
-const historyMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-const historyValues = [75, 78, 80, 79, 85, 92];
+// Fallback default shapes (used when API is unavailable)
+const defaultData: ReputationCenterApi = {
+  trustScore: { currentScore: 92, growthPercentage: 4.2, percentileRank: "Top 5% of local competitors" },
+  trustScoreHistory: [{ month: "Jan", score: 85 }],
+  aiSentiment: {
+    positiveTags: ["😊 Excellent Service", "😊 Friendly Staff", "🌿 Eco-friendly", "€ Fair Pricing"],
+    negativeTags: ["⚠️ Slow Response"],
+    recentHighlight: { author: "Martine D.", rating: 5, comment: "The service was impeccable and the team really knows their craft.", timestamp: "2 days ago" },
+  },
+  recentReviews: [
+    {
+      _id: "0",
+      customerId: "cust-0",
+      businessId: "biz-0",
+      rating: 5,
+      comment: "Amazing service! The team was super helpful and fast.",
+      createdAt: new Date().toISOString(),
+      ownerReply: undefined,
+    },
+  ],
+};
 
-const CHART_WIDTH = 500;
-const CHART_TOP = 20;
-const CHART_BASELINE = 100;
+const insights: { icon: IconType; title: string; description: string; action: string }[] = [
+  {
+    icon: FiAlertTriangle,
+    title: "Missing Information",
+    description:
+      "Your profile is missing opening hours — complete it to boost your Trust Score by up to +5 points.",
+    action: "Update Now",
+  },
+  {
+    icon: FiMessageSquare,
+    title: "Response Rate",
+    description:
+      "You have 3 unanswered reviews from this week. Replying within 24h increases customer trust by 15%.",
+    action: "View Reviews",
+  },
+  {
+    icon: FiCamera,
+    title: "Visual Impact",
+    description:
+      "Businesses with at least 10 high-quality photos get 2x more inquiries. You currently have 4.",
+    action: "Add Photos",
+  },
+];
+
+const Stars = ({ count }: { count: number }) => (
+  <div className="flex gap-0.5 text-[#d99a3d]">
+    {Array.from({ length: 5 }).map((_, i) => (
+      <FiStar key={i} className="text-[13px]" fill={i < count ? "currentColor" : "none"} />
+    ))}
+  </div>
+);
+
+const CHART_WIDTH = 500; const CHART_TOP = 20; const CHART_BASELINE = 100;
 
 function buildPoints(values: number[]) {
+  if (values.length === 0) return [] as { x: number; y: number }[];
   const min = Math.min(...values) - 10;
   const max = Math.max(...values) + 4;
   const span = CHART_BASELINE - CHART_TOP;
@@ -50,296 +126,322 @@ function buildSmoothPath(points: { x: number; y: number }[]) {
   return d;
 }
 
-const historyPoints = buildPoints(historyValues);
-const historyPath = buildSmoothPath(historyPoints);
-const lastPoint = historyPoints[historyPoints.length - 1];
-
-type Sentiment = { label: string; tone: "positive" | "negative" | "neutral" };
-
-const sentiments: Sentiment[] = [
-  { label: "😊 Excellent Service", tone: "positive" },
-  { label: "🙂 Friendly Staff", tone: "positive" },
-  { label: "🌿 Eco-friendly", tone: "positive" },
-  { label: "€ Fair Pricing", tone: "positive" },
-  { label: "⚠ Slow Response", tone: "negative" },
-  { label: "🅿 Easy Parking", tone: "neutral" },
-];
-
-const sentimentStyles: Record<Sentiment["tone"], string> = {
-  positive: "bg-[#e4f3ec] text-[#00663f]",
-  negative: "bg-[#fbe2e2] text-[#c0524d]",
-  neutral: "bg-slate-100 text-slate-500",
-};
-
-type Insight = {
-  icon: IconType;
-  title: string;
-  description: string;
-  action: string;
-};
-
-const insights: Insight[] = [
-  {
-    icon: FiAlertTriangle,
-    title: "Missing Information",
-    description: "Your profile is missing opening hours — complete it to boost your Trust Score by up to +5 points.",
-    action: "Update Now",
-  },
-  {
-    icon: FiMessageSquare,
-    title: "Response Rate",
-    description: "You have 3 unanswered reviews from this week. Replying within 24h increases customer trust by 15%.",
-    action: "View Reviews",
-  },
-  {
-    icon: FiCamera,
-    title: "Visual Impact",
-    description: "Businesses with at least 10 high-quality photos get 2x more inquiries. You currently have 4.",
-    action: "Add Photos",
-  },
-];
-
-type Review = {
-  name: string;
-  rating: number;
-  title: string;
-  body: string;
-  reply?: string;
-};
-
-const reviews: Review[] = [
-  {
-    name: "Thomas Leroy",
-    rating: 5,
-    title: "Excellent travail sur la toiture !",
-    body: "L'équipe a été extrêmement professionnelle du début à la fin. Le chantier a été laissé impeccable chaque soir. Je recommande vivement pour tous vos travaux de rénovation.",
-  },
-  {
-    name: "Sophie Girard",
-    rating: 4,
-    title: "Très satisfait de l'intervention",
-    body: "Un peu difficile de les joindre au téléphone au début, mais une fois le contact établi, tout s'est très bien passé. Ponctuels et efficaces.",
-    reply:
-      "Merci pour votre retour Sophie ! Nous travaillons sur l'amélioration de notre accueil téléphonique.",
-  },
-];
-
-function Stars({ count }: { count: number }) {
-  return (
-    <div className="flex gap-0.5 text-[#d99a3d]">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <FiStar key={index} className="text-[13px]" fill={index < count ? "currentColor" : "none"} />
-      ))}
-    </div>
-  );
-}
-
 export default function Reputation() {
+  const [data, setData] = useState<ReputationCenterApi | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    baseApi
+      .get(ENDPOINTS.reputationCenter)
+      .then((res) => {
+        if (!mounted) return;
+        const payload = res.data?.data ?? res.data;
+        setData((payload as ReputationCenterApi) ?? null);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setData(defaultData);
+        setError("Unable to load reputation data. Showing sample data.");
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const trust = data?.trustScore ?? defaultData.trustScore;
+  const history = data?.trustScoreHistory ?? defaultData.trustScoreHistory;
+  const aiSentiment = data?.aiSentiment ?? defaultData.aiSentiment;
+  const recentReviews = data?.recentReviews ?? defaultData.recentReviews;
+
+  const historyScores = history.map((h) => h.score);
+  const historyMonths = history.map((h) => h.month);
+  const historyPoints = buildPoints(historyScores);
+  const historyPath = buildSmoothPath(historyPoints);
+  const lastPoint = historyPoints[historyPoints.length - 1] ?? { x: 0, y: CHART_BASELINE };
+
+  const growthLabel = `+${trust.growthPercentage.toFixed(1)}% since last month`;
+  const reviewsToRender = recentReviews.length > 0 ? recentReviews : [];
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Reputation Center</h1>
-        <p className="mt-1 text-sm text-slate-500">Track your trust score and manage customer feedback.</p>
+        <h1 className="text-2xl font-bold text-slate-900">Trust Score &amp; Reputation</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Monitor your customer credibility, AI sentiment, and verified reviews.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="overflow-hidden rounded-2xl bg-gradient-to-b from-[#e4f3ec] to-white p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Trust Score</p>
-          <p className="mt-2">
-            <span className="text-4xl font-bold text-[#00663f]">{trustScore.value}</span>
-            <span className="text-lg font-medium text-slate-400"> /100</span>
-          </p>
-          <p className="mt-1 flex items-center gap-1 text-xs font-medium text-[#00663f]">
-            <FiArrowUpRight className="text-[13px]" />
-            {trustScore.change}
-          </p>
+      {loading ? (
+        <div className="py-12 text-center text-slate-400">Loading reputation data...</div>
+      ) : (
+        <>
+          {/* Top stats */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Trust Score</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-slate-900">{trust.currentScore}</span>
+                <span className="text-sm font-medium text-slate-400">/ 100</span>
+              </div>
+              <p className="mt-1 flex items-center gap-1 text-xs font-semibold text-[#00663f]">
+                <FiArrowUpRight className="text-[14px]" />
+                {growthLabel}
+              </p>
+            </div>
 
-          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white">
-            <div className="h-full rounded-full bg-[#00663f]" style={{ width: `${trustScore.value}%` }} />
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Verified Reviews</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-slate-900">{recentReviews.length}</span>
+                <span className="text-xs font-semibold text-[#00663f]">★ 4.9</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Recent active reviews</p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">AI Sentiment</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-slate-900">96%</span>
+                <span className="text-xs font-semibold text-[#00663f]">Positive</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Based on verified reviews</p>
+            </div>
+
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Local Ranking</p>
+              <div className="mt-2 flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-slate-900">#3</span>
+                <span className="text-xs text-slate-400">in Paris 8e</span>
+              </div>
+              <p className="mt-1 text-xs font-medium text-[#00663f]">{trust.percentileRank}</p>
+            </div>
           </div>
 
-          <p className="mt-3 text-xs text-slate-500">
-            Your business is ranked in the top 5% of local competitors.
-          </p>
-        </div>
+          {/* Charts & AI Sentiment */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="rounded-2xl bg-white p-5 shadow-sm lg:col-span-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Trust Score Evolution</h2>
+                  <p className="text-xs text-slate-400">Track your customer confidence trajectory over time</p>
+                </div>
+                <span className="rounded-full bg-[#e4f3ec] px-3 py-1 text-xs font-bold text-[#00663f]">
+                  {trust.percentileRank}
+                </span>
+              </div>
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900">Trust Score History</h2>
-            <button
-              type="button"
-              className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50"
-            >
-              Last 6 Months ⌄
-            </button>
-          </div>
-
-          <svg viewBox={`0 0 ${CHART_WIDTH} 120`} className="mt-4 w-full overflow-visible">
-            <line x1={0} x2={CHART_WIDTH} y1={CHART_TOP} y2={CHART_TOP} stroke="#e1e0d9" strokeWidth={1} />
-            <line x1={0} x2={CHART_WIDTH} y1={CHART_BASELINE} y2={CHART_BASELINE} stroke="#e1e0d9" strokeWidth={1} />
-
-            <path d={historyPath} fill="none" stroke="#00663f" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-
-            <circle cx={lastPoint.x} cy={lastPoint.y} r={4} fill="#00663f" stroke="#ffffff" strokeWidth={2} />
-
-            <g transform={`translate(${lastPoint.x - 42}, ${lastPoint.y - 34})`}>
-              <rect width={30} height={20} rx={5} fill="#0b0b0b" />
-              <text x={15} y={14} textAnchor="middle" fontSize={11} fontWeight={700} fill="#ffffff">
-                {historyValues[historyValues.length - 1]}
-              </text>
-            </g>
-
-            {historyMonths.map((month, index) => (
-              <text key={month} x={historyPoints[index].x} y={116} textAnchor="middle" fontSize={11} fill="#898781">
-                {month}
-              </text>
-            ))}
-          </svg>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e4f3ec] text-[#00663f]">
-              <FiZap className="text-[15px]" />
-            </span>
-            <h2 className="text-base font-bold text-slate-900">AI Sentiment Analysis</h2>
-          </div>
-          <p className="mt-2 text-sm text-slate-500">
-            We&rsquo;ve analyzed 48 recent reviews to extract recurring customer feedback themes.
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {sentiments.map((item) => (
-              <span
-                key={item.label}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium ${sentimentStyles[item.tone]}`}
-              >
-                {item.label}
-              </span>
-            ))}
-          </div>
-
-          <div className="mt-4 rounded-xl border-l-2 border-[#00663f] bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Recent Review Highlight</p>
-            <div className="mt-2 flex items-start gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e4f3ec] text-xs font-semibold text-[#00663f]">
-                MD
-              </span>
-              <div>
-                <p className="text-sm italic text-slate-600">
-                  &ldquo;The service was impeccable and the team really knows their craft. A bit of a wait for the
-                  quote, but worth it for the quality.&rdquo;
-                </p>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <Stars count={4} />
-                  <span className="text-xs text-slate-400">Martine D. · 2 days ago</span>
+              <div className="mt-6">
+                <div className="relative h-40 w-full overflow-hidden">
+                  <svg
+                    viewBox={`0 0 ${CHART_WIDTH} ${CHART_BASELINE + 10}`}
+                    className="h-full w-full overflow-visible"
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#00663f" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#00663f" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    {historyPath && (
+                      <>
+                        <path
+                          d={`${historyPath} L ${CHART_WIDTH} ${CHART_BASELINE + 10} L 0 ${CHART_BASELINE + 10} Z`}
+                          fill="url(#chartGrad)"
+                        />
+                        <path
+                          d={historyPath}
+                          fill="none"
+                          stroke="#00663f"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                        />
+                        <circle
+                          cx={lastPoint.x}
+                          cy={lastPoint.y}
+                          r="5"
+                          fill="#00663f"
+                          stroke="#ffffff"
+                          strokeWidth="2"
+                        />
+                      </>
+                    )}
+                  </svg>
+                </div>
+                <div className="mt-2 flex justify-between text-xs text-slate-400">
+                  {historyMonths.map((m) => (
+                    <span key={m}>{m}</span>
+                  ))}
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-[#00663f] p-5 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-white">
-                <FiZap className="text-[13px]" />
-              </span>
-              <h2 className="text-base font-bold text-white">Coach Insights</h2>
-            </div>
+            {/* AI Sentiment Analysis */}
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-2">
+                <FiZap className="text-[16px] text-[#00663f]" />
+                <h2 className="text-base font-bold text-slate-900">AI Sentiment Analysis</h2>
+              </div>
+              <p className="mt-0.5 text-xs text-slate-400">Extracted from customer feedback</p>
 
-            <div className="mt-4 space-y-4">
-              {insights.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <div key={item.title} className="flex items-start gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white">
-                      <Icon className="text-[14px]" />
+              <div className="mt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Common Praises</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {aiSentiment.positiveTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-[#e4f3ec] px-2.5 py-1 text-xs font-medium text-[#00663f]"
+                    >
+                      {tag}
                     </span>
-                    <div>
-                      <p className="text-sm font-semibold text-white">{item.title}</p>
-                      <p className="mt-0.5 text-xs text-green-100/85">{item.description}</p>
-                      <button type="button" className="mt-1 text-xs font-semibold text-white underline underline-offset-2">
-                        {item.action}
-                      </button>
-                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {aiSentiment.negativeTags.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Areas to Watch</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {aiSentiment.negativeTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600"
+                      >
+                        {tag}
+                      </span>
+                    ))}
                   </div>
-                );
-              })}
+                </div>
+              )}
+
+              {aiSentiment.recentHighlight && (
+                <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-700">
+                      {aiSentiment.recentHighlight.author}
+                    </span>
+                    <Stars count={aiSentiment.recentHighlight.rating} />
+                  </div>
+                  <p className="mt-1.5 text-xs text-slate-500 line-clamp-2">
+                    &ldquo;{aiSentiment.recentHighlight.comment}&rdquo;
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition-colors hover:bg-slate-50"
-          >
-            <div className="flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                <FiShare2 className="text-[15px]" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-slate-800">Reputation Badge</p>
-                <p className="text-xs text-slate-400">Showcase your {trustScore.value}/100 score on your site.</p>
+          {/* Insights & Recent Reviews */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900">Trust Improvement Actions</h2>
+              <p className="mt-0.5 text-xs text-slate-400">Actionable steps to reach a 95+ score</p>
+
+              <div className="mt-4 space-y-3">
+                {insights.map((insight) => {
+                  const Icon = insight.icon;
+                  return (
+                    <div
+                      key={insight.title}
+                      className="flex items-start justify-between gap-3 rounded-xl border border-slate-100 p-3.5"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-lg bg-slate-50 p-2 text-slate-600">
+                          <Icon className="text-[16px]" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{insight.title}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">{insight.description}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="shrink-0 text-xs font-semibold text-[#00663f] hover:underline"
+                      >
+                        {insight.action}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <FiChevronRight className="text-[16px] text-slate-400" />
-          </button>
-        </div>
-      </div>
 
-      <div className="rounded-2xl bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">Recent Customer Reviews</h2>
-          <button type="button" className="text-sm font-medium text-[#00663f] hover:underline">
-            See all reviews
-          </button>
-        </div>
-
-        <ul className="mt-4 divide-y divide-slate-100">
-          {reviews.map((review) => (
-            <li key={review.name} className="py-4 first:pt-0 last:pb-0">
-              <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
-                <div className="w-40 shrink-0">
-                  <Stars count={review.rating} />
-                  <p className="mt-1 text-sm font-semibold text-slate-800">{review.name}</p>
-                  <p className="text-xs text-slate-400">Verified Client</p>
-                </div>
-
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-slate-800">{review.title}</p>
-                  <p className="mt-1 text-sm text-slate-500">{review.body}</p>
-
-                  {review.reply ? (
-                    <div className="mt-3 rounded-xl border-l-2 border-[#00663f] bg-slate-50 p-3">
-                      <p className="text-xs font-semibold text-[#00663f]">Your Reply:</p>
-                      <p className="mt-1 text-sm italic text-slate-500">&ldquo;{review.reply}&rdquo;</p>
-                    </div>
-                  ) : (
-                    <div className="mt-3 flex items-center gap-4">
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 text-xs font-medium text-[#00663f] hover:underline"
-                      >
-                        <FiCornerUpLeft className="text-[12px]" />
-                        Reply to review
-                      </button>
-                      <button
-                        type="button"
-                        className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:underline"
-                      >
-                        <FiFlag className="text-[12px]" />
-                        Report
-                      </button>
-                    </div>
-                  )}
-                </div>
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-slate-900">Recent Customer Reviews</h2>
               </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+
+              <ul className="mt-4 divide-y divide-slate-100">
+                {reviewsToRender.length > 0 ? (
+                  reviewsToRender.map((review) => {
+                    const customerObj =
+                      typeof review.customerId === "object" && review.customerId !== null
+                        ? (review.customerId as Record<string, unknown>)
+                        : null;
+                    const customerName =
+                      customerObj?.fullName || customerObj?.name || customerObj?.username || customerObj?.email;
+                    const customerIdStr =
+                      typeof review.customerId === "string"
+                        ? review.customerId
+                        : typeof customerObj?._id === "string"
+                        ? customerObj._id
+                        : "";
+                    const reviewIdStr = typeof review._id === "string" ? review._id : "";
+                    const name =
+                      typeof customerName === "string" && customerName.trim()
+                        ? customerName.trim()
+                        : customerIdStr
+                        ? `Customer ${customerIdStr.slice(-6)}`
+                        : reviewIdStr
+                        ? `Customer ${reviewIdStr.slice(-6)}`
+                        : "Guest";
+                    return (
+                      <li key={review._id} className="py-4 first:pt-0 last:pb-0">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:gap-6">
+                          <div className="w-40 shrink-0">
+                            <Stars count={review.rating} />
+                            <p className="mt-1 text-sm font-semibold text-slate-800">{name}</p>
+                            <p className="text-xs text-slate-400">Verified Client</p>
+                          </div>
+
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-slate-800">{typeof review.comment === "string" ? review.comment.slice(0, 60) : "Review"}</p>
+                            {review.ownerReply ? (
+                              <div className="mt-3 rounded-xl border-l-2 border-[#00663f] bg-slate-50 p-3">
+                                <p className="text-xs font-semibold text-[#00663f]">Your Reply:</p>
+                                <p className="mt-1 text-sm italic text-slate-500">&ldquo;{review.ownerReply}&rdquo;</p>
+                              </div>
+                            ) : (
+                              <div className="mt-3 flex items-center gap-4">
+                                <button type="button" className="flex items-center gap-1.5 text-xs font-medium text-[#00663f] hover:underline">
+                                  <FiCornerUpLeft className="text-[12px]" />
+                                  Reply to review
+                                </button>
+                                <button type="button" className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:underline">
+                                  <FiFlag className="text-[12px]" />
+                                  Report
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })
+                ) : (
+                  <li className="py-4 text-sm text-slate-500">No reviews available</li>
+                )}
+              </ul>
+            </div>
+          </div>
+        </>
+      )}
+      {error && <div className="p-3 rounded bg-yellow-100 text-yellow-800">{error}</div>}
     </div>
   );
 }
