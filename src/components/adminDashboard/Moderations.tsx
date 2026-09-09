@@ -7,7 +7,7 @@ import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { toast } from "sonner";
 
-type Report = { _id: string; post?: { _id?: string; postIdFormatted?: string; title?: string; content?: string; postType?: string; thumbnail?: string; postedTimeAgo?: string }; author?: { name?: string; email?: string; role?: string }; reporter?: { name?: string; email?: string; rank?: string }; reason?: { category?: string; categoryLabel?: string; details?: string }; status?: string; statusLabel?: string; actionTaken?: string };
+type Report = { _id: string; post?: { _id?: string; postIdFormatted?: string; title?: string; content?: string; postType?: string; thumbnail?: string; postedTimeAgo?: string }; author?: { name?: string; email?: string; role?: string }; reporter?: { name?: string; email?: string; rank?: string }; reason?: { category?: string; categoryLabel?: string; details?: string }; status?: string; statusLabel?: string; actionTaken?: string; adminNote?: string };
 type ApiResponse = { data?: { items?: Report[]; meta?: { total?: number; totalPages?: number } } | Report[]; items?: Report[]; meta?: { total?: number; totalPages?: number } };
 
 function parseReports(payload: unknown) {

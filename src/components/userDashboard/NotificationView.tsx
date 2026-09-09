@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Bell,
-  Calendar,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -99,7 +98,7 @@ function isImageAttachment(url: string): boolean {
   );
 }
 
-export default function Notification() {
+export default function NotificationView() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -118,9 +117,11 @@ export default function Notification() {
       .catch((requestError: unknown) => {
         const message = (requestError as { response?: { data?: { message?: string } } })
           .response?.data?.message;
-        setError(message || "Unable to load your reminders.");
+        setError(message || "Failed to load reminders.");
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -129,7 +130,8 @@ export default function Notification() {
 
   const handleDeleteReminder = async (reminderId: string) => {
     if (!reminderId) return;
-    if (!confirm("Are you sure you want to delete this reminder?")) return;
+    const confirmed = window.confirm("Are you sure you want to delete this reminder?");
+    if (!confirmed) return;
 
     setDeletingId(reminderId);
     try {
@@ -169,15 +171,15 @@ export default function Notification() {
         </div>
       </div>
 
-      {/* Loading state */}
+      {/* Main Content */}
       {isLoading ? (
-        <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-16 shadow-xs">
+        <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-16 text-center shadow-xs">
           <Loader2 className="animate-spin text-[#00663f]" size={36} />
-          <p className="mt-3 text-sm font-medium text-slate-500">Loading your reminders...</p>
+          <p className="mt-3 text-xs font-semibold text-slate-500">Loading your reminders...</p>
         </div>
       ) : error ? (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
-          <p className="font-semibold">Failed to load reminders</p>
+        <div className="mt-6 rounded-2xl border border-red-100 bg-red-50 p-6 text-center text-xs text-red-700 shadow-xs">
+          <p className="font-semibold">Failed to fetch reminders</p>
           <p className="mt-1">{error}</p>
           <button
             type="button"
@@ -214,13 +216,13 @@ export default function Notification() {
             const businessName = business?.name || "Business update";
             const businessLogo = business?.logo;
             const businessSlug = business?.slug;
-
             const title = post?.title || reminder.title || "Business announcement";
             const content = post?.content || reminder.content || "";
             const attachments = post?.attachments || reminder.attachments || [];
 
             const isUpcoming =
-              reminder.reminderDate && new Date(reminder.reminderDate) > new Date();
+              reminder.reminderDate &&
+              new Date(reminder.reminderDate).getTime() > Date.now();
 
             return (
               <div
@@ -277,43 +279,45 @@ export default function Notification() {
                     </button>
                   </div>
 
-                  {/* Reminder Alert Badge */}
-                  <div className="mt-4 flex items-center justify-between rounded-xl bg-[#f7f9f8] px-3.5 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <Clock size={15} className="text-[#00663f]" />
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#00663f]">
-                          {isUpcoming ? "Scheduled Alert" : "Reminder Passed"}
-                        </p>
-                        <p className="text-[13px] font-semibold text-slate-800">
-                          {formatDate(reminder.reminderDate)}
-                        </p>
+                  {/* Reminder scheduled status */}
+                  {reminder.reminderDate && (
+                    <div className="mt-3.5 flex flex-wrap items-center gap-2 rounded-xl bg-[#f7faf8] px-3 py-2 text-[11px] text-slate-600">
+                      <div className="flex items-center gap-1.5 font-semibold text-[#00663f]">
+                        <Clock size={13} />
+                        <span>Scheduled Alert:</span>
                       </div>
+                      <span className="font-bold text-slate-800">
+                        {formatDate(reminder.reminderDate)}
+                      </span>
+                      <span
+                        className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                          reminder.isDispatched
+                            ? "bg-slate-200 text-slate-600"
+                            : isUpcoming
+                            ? "bg-[#e4f3ec] text-[#00663f]"
+                            : "bg-amber-100 text-amber-800"
+                        }`}
+                      >
+                        {reminder.isDispatched
+                          ? "Delivered"
+                          : isUpcoming
+                          ? "Active Alert"
+                          : "Due"}
+                      </span>
                     </div>
-                    {reminder.isDispatched ? (
-                      <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-[10px] font-semibold text-slate-600">
-                        Delivered
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-[#00663f] px-2.5 py-0.5 text-[10px] font-semibold text-white">
-                        Active
-                      </span>
-                    )}
-                  </div>
+                  )}
 
-                  {/* Post Title & Content */}
+                  {/* Post Content */}
                   <div className="mt-4">
-                    <h3 className="text-[15px] font-bold leading-snug text-slate-900">
+                    <h3 className="line-clamp-2 text-[15px] font-bold text-slate-900">
                       {title}
                     </h3>
-                    {content && (
-                      <p className="mt-2 line-clamp-3 text-[13px] leading-relaxed text-slate-600 whitespace-pre-line">
-                        {content}
-                      </p>
-                    )}
+                    <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-slate-600">
+                      {content}
+                    </p>
                   </div>
 
-                  {/* Post Attachments Section */}
+                  {/* Attachments Section */}
                   {attachments.length > 0 && (
                     <div className="mt-4">
                       <div className="mb-2 flex items-center justify-between">
@@ -326,68 +330,60 @@ export default function Notification() {
                       {attachments.length === 1 && isImageAttachment(attachments[0]) ? (
                         <div
                           onClick={() => setPreviewImage(mediaUrl(attachments[0]))}
-                          className="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-100 bg-slate-100"
+                          className="group relative h-48 w-full cursor-pointer overflow-hidden rounded-xl border border-slate-100 bg-slate-100"
                         >
                           <img
                             src={mediaUrl(attachments[0])}
-                            alt={title}
-                            className="max-h-64 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                            alt="Post attachment"
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
-                            <span className="flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white backdrop-blur-xs">
-                              <Maximize2 size={13} /> View full photo
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
+                            <span className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-900 shadow-md">
+                              <Maximize2 size={13} />
+                              View full photo
                             </span>
                           </div>
                         </div>
                       ) : (
-                        /* Multiple attachments or documents */
-                        <div className="space-y-2">
+                        /* Multiple attachments grid */
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                           {attachments.map((att, idx) => {
                             const isImg = isImageAttachment(att);
                             const url = mediaUrl(att);
+                            const filename = att.split("/").pop() || `File ${idx + 1}`;
 
                             if (isImg) {
                               return (
                                 <div
                                   key={idx}
                                   onClick={() => setPreviewImage(url)}
-                                  className="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-100 bg-slate-100"
+                                  className="group relative h-24 cursor-pointer overflow-hidden rounded-xl border border-slate-100 bg-slate-100"
                                 >
                                   <img
                                     src={url}
-                                    alt={`${title} attachment ${idx + 1}`}
-                                    className="max-h-56 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                                    alt={`Attachment ${idx + 1}`}
+                                    className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
                                   />
-                                  <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity group-hover:opacity-100">
-                                    <span className="flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white backdrop-blur-xs">
-                                      <Maximize2 size={13} /> View photo {idx + 1}
-                                    </span>
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition group-hover:opacity-100">
+                                    <Maximize2 size={16} className="text-white drop-shadow" />
                                   </div>
                                 </div>
                               );
                             }
 
-                            // Document attachment
                             return (
                               <a
                                 key={idx}
                                 href={url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="flex items-center gap-3 rounded-xl border border-[#eef0f1] bg-[#f7f7fa] p-3 transition hover:bg-[#eef0f1]"
+                                className="flex h-24 flex-col items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-2 text-center transition hover:bg-slate-100"
                               >
-                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#00663f] text-white">
-                                  <FileText size={18} />
+                                <FileText size={20} className="text-[#00663f]" />
+                                <span className="mt-1 line-clamp-1 text-[11px] font-semibold text-slate-700">
+                                  {filename}
                                 </span>
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-xs font-bold text-slate-800">
-                                    {att.split("/").pop() || "Document attachment"}
-                                  </p>
-                                  <p className="text-[11px] text-slate-400">
-                                    Click to view or download
-                                  </p>
-                                </div>
-                                <ExternalLink size={15} className="text-[#00663f]" />
+                                <span className="text-[10px] text-slate-400">Open file</span>
                               </a>
                             );
                           })}
@@ -398,26 +394,36 @@ export default function Notification() {
                 </div>
 
                 {/* Card Footer Actions */}
-                <div className="flex items-center justify-between border-t border-[#eef0f1] bg-slate-50/50 px-5 py-3">
-                  {post ? (
-                    <button
-                      type="button"
-                      onClick={() => setViewingPost(post)}
-                      className="inline-flex items-center gap-1.5 text-xs font-bold text-[#00663f] transition hover:underline"
-                    >
-                      <Eye size={14} />
-                      View Full Details
-                    </button>
-                  ) : (
-                    <span className="text-xs text-slate-400">Original post</span>
-                  )}
-
-                  <Link
-                    href="/feed"
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 transition hover:text-[#00663f]"
+                <div className="flex items-center justify-between border-t border-[#eef0f1] bg-slate-50/70 px-5 py-3 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (post) {
+                        setViewingPost(post);
+                      } else {
+                        setViewingPost({
+                          title,
+                          content,
+                          attachments,
+                          business: business,
+                        });
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 font-bold text-[#00663f] hover:underline"
                   >
-                    Go to Feed ↗
-                  </Link>
+                    <Eye size={14} />
+                    View Full Post
+                  </button>
+
+                  {businessSlug && (
+                    <Link
+                      href={`/feature/${businessSlug}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 transition hover:text-[#00663f]"
+                    >
+                      Visit Business
+                      <ExternalLink size={12} />
+                    </Link>
+                  )}
                 </div>
               </div>
             );
@@ -494,18 +500,32 @@ export default function Notification() {
               {viewingPost.attachments && viewingPost.attachments.length > 0 && (
                 <div className="space-y-3 pt-2">
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Attachments
+                    Attachments ({viewingPost.attachments.length})
                   </p>
                   {viewingPost.attachments.map((att, index) => {
                     const url = mediaUrl(att);
                     if (isImageAttachment(att)) {
                       return (
-                        <img
+                        <div
                           key={index}
-                          src={url}
-                          alt="Attachment"
-                          className="max-h-80 w-full rounded-xl object-cover"
-                        />
+                          onClick={() => {
+                            setViewingPost(null);
+                            setPreviewImage(url);
+                          }}
+                          className="group relative cursor-pointer overflow-hidden rounded-xl border border-slate-100"
+                        >
+                          <img
+                            src={url}
+                            alt="Attachment"
+                            className="max-h-80 w-full rounded-xl object-cover transition duration-300 group-hover:scale-102"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition group-hover:opacity-100">
+                            <span className="flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-900 shadow">
+                              <Maximize2 size={13} />
+                              Open full view
+                            </span>
+                          </div>
+                        </div>
                       );
                     }
                     return (
@@ -514,7 +534,7 @@ export default function Notification() {
                         href={url}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-[#00663f]"
+                        className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-[#00663f] hover:bg-slate-100"
                       >
                         <FileText size={18} />
                         <span className="truncate">{att.split("/").pop()}</span>
@@ -541,3 +561,4 @@ export default function Notification() {
     </div>
   );
 }
+

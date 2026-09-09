@@ -27,6 +27,7 @@ export const ENDPOINTS = {
 
   remindPost: `/posts/reminders`,
   myReminders: `/posts/reminders/my-reminders`,
+  deleteReminder: (reminderId: string) => `/posts/reminders/${reminderId}`,
 
   businessRegistration: "/businesses",
   getMyProfileBusinesses: "/businesses/my-profile",

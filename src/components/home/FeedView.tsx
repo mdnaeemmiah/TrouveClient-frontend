@@ -1,4 +1,4 @@
-﻿/* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -91,7 +91,7 @@ function getBusinessId(value: unknown): string | undefined {
   return undefined;
 }
 
-export default function Feed() {
+export default function FeedView() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] =
     useState<(typeof tabs)[number]>("Recent Updates");
@@ -671,3 +671,4 @@ export default function Feed() {
     </div>
   );
 }
+

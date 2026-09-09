@@ -33,7 +33,7 @@ function getBusinesses(payload: unknown): PendingBusiness[] {
   const data = response.data;
   if (Array.isArray(data)) return data;
   if (data && typeof data === "object") {
-    const nested = data as Exclude<BusinessResponse["data"], PendingBusiness[] | PendingBusiness>;
+    const nested = data as { items?: PendingBusiness[]; businesses?: PendingBusiness[]; result?: PendingBusiness[] | PendingBusiness; data?: unknown };
     if (nested.items) return nested.items;
     if (nested.businesses) return nested.businesses;
     if (nested.result) return Array.isArray(nested.result) ? nested.result : [nested.result];
