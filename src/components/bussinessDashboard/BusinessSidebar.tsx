@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import type { IconType } from "react-icons";
 import {
@@ -8,11 +9,15 @@ import {
   FiClipboard,
   FiCompass,
   FiGrid,
+  FiLogOut,
   FiSettings,
   FiStar,
   FiX,
   FiZap,
 } from "react-icons/fi";
+import { toast } from "sonner";
+import baseApi from "@/src/api/baseApi";
+import { ENDPOINTS } from "@/src/api/endPoints";
 
 type NavItem = {
   label: string;
@@ -26,7 +31,7 @@ const navItems: NavItem[] = [
   { label: "Booking Requests", href: "/businessDashboard/booking", icon: FiClipboard },
   { label: "Business Listings", href: "/businessDashboard/listings", icon: FiBriefcase },
   { label: "AI Marketing Assistant", href: "/businessDashboard/aiMarketing", icon: FiZap },
-  { label: "AI Business Coach", href: "/businessDashboard/aiCoach", icon: FiCompass },
+  // { label: "AI Business Coach", href: "/businessDashboard/aiCoach", icon: FiCompass },
   { label: "System Settings", href: "/businessDashboard/settings", icon: FiSettings },
 ];
 
@@ -37,8 +42,22 @@ type BusinessSidebarProps = {
 
 export default function BusinessSidebar({ open, onClose }: BusinessSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (href: string) => pathname?.startsWith(href);
+
+  const handleLogout = async () => {
+    try {
+      await baseApi.post(ENDPOINTS.logout);
+      localStorage.clear();
+      sessionStorage.clear();
+      toast.success("Logged out successfully.");
+      router.push("/auth/login");
+    } catch (error: unknown) {
+      const msg = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
+      toast.error(msg || "Failed to logout.");
+    }
+  };
 
   return (
     <>
@@ -99,25 +118,19 @@ export default function BusinessSidebar({ open, onClose }: BusinessSidebarProps)
           })}
         </nav>
 
-        <div className="mt-auto border-t border-white/15 pt-3">
-          <Link
-            href="/businessDashboard/settings"
-            onClick={onClose}
-            className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-all duration-200 ${
-              isActive("/businessDashboard/settings")
-                ? "bg-white text-[#00663f] shadow-sm"
-                : "text-green-100 hover:bg-white/12 hover:text-white"
-            }`}
+        <div className="mt-auto border-t border-white/15 pt-3 space-y-1.5">
+
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              handleLogout();
+            }}
+            className="group w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition-all duration-200 text-green-100 hover:bg-white/12 hover:text-white"
           >
-            <FiSettings
-              className={`text-[17px] transition-transform duration-200 ${
-                isActive("/businessDashboard/settings")
-                  ? "text-[#00663f] scale-105"
-                  : "text-green-200 group-hover:scale-105 group-hover:text-white"
-              }`}
-            />
-            <span>System Settings</span>
-          </Link>
+            <FiLogOut className="text-[17px] transition-transform duration-200 text-green-200 group-hover:scale-105 group-hover:text-white" />
+            <span>Logout</span>
+          </button>
         </div>
       </aside>
     </>

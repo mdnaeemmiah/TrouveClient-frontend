@@ -9,9 +9,6 @@ import baseApi from "@/src/api/baseApi";
 import img1 from "@/src/assets/details/img1.png";
 import type { Booking } from "@/src/data/bookings";
 
-type Tab = "Upcoming" | "Past Bookings";
-const tabs: Tab[] = ["Upcoming", "Past Bookings"];
-
 type ApiBooking = {
   _id?: string;
   id?: string;
@@ -61,7 +58,6 @@ function toBooking(item: ApiBooking, index: number): Booking {
 }
 
 export default function MyBookings() {
-  const [activeTab, setActiveTab] = useState<Tab>("Upcoming");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -84,32 +80,12 @@ export default function MyBookings() {
     return () => { isMounted = false; };
   }, []);
 
-  const visibleBookings = bookings.filter((booking) =>
-    activeTab === "Upcoming" ? booking.status === "Confirmed" : booking.status !== "Confirmed",
-  );
+  const visibleBookings = [...bookings].reverse();
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-[#00663f]">My Bookings</h1>
+      <h1 className="text-2xl font-bold text-[#00663f]">History</h1>
       <p className="mt-1 text-sm text-slate-500">Manage your reservations and appointments.</p>
-
-      <div className="mt-6 flex items-center gap-6 border-b border-slate-200">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            className={`relative pb-3 text-sm font-semibold transition-colors ${
-              activeTab === tab ? "text-[#00663f]" : "text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            {tab}
-            {activeTab === tab && (
-              <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[#00663f]" />
-            )}
-          </button>
-        ))}
-      </div>
 
       <div className="mt-6 space-y-4">
         {isLoading && (

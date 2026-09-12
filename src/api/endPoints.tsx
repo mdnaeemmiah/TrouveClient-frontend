@@ -13,8 +13,9 @@ export const ENDPOINTS = {
   resetPassword: "/auth/reset-password",
   changePassword: "/auth/change-password",
   logout: "/auth/logout",
-
   getUserProfile: "/users/me",
+  updateProfile:"/users/me",
+
   popularCategories: "/categories/popular",
   categories: "/categories",
 
@@ -24,12 +25,17 @@ export const ENDPOINTS = {
   followingPosts: "/posts/following-feed",
   likePost: (postId: any) => `/posts/${postId}/like`,
   reportPost: (postId: any) => `/posts/${postId}/report`,
+  totalFollower:"/businesses/my-profile/followers",
 
+
+  getView: (postId: string) => `/posts/${postId}`,
+  countView: (postId: string) => `/posts/${postId}/view`,
   remindPost: `/posts/reminders`,
   myReminders: `/posts/reminders/my-reminders`,
   deleteReminder: (reminderId: string) => `/posts/reminders/${reminderId}`,
 
   businessRegistration: "/businesses",
+  updateBusinessProfile:"/businesses/my-profile",
   getMyProfileBusinesses: "/businesses/my-profile",
   getBusinesses: "/businesses",
   getBusinessById: (slug: string) => `/businesses/${slug}`,
@@ -48,6 +54,7 @@ export const ENDPOINTS = {
   searchBusinesses: "/ai/search",
   compareBusinesses: "/ai/compare",
   historyMarketing: "/marketing/history",
+  marketing:"/ai/marketing",
 
   bookings: "/bookings",
   bookingRequests: "/bookings/my-requests",
@@ -55,12 +62,15 @@ export const ENDPOINTS = {
   recentlyVisited: "/businesses/recent-visits",
   postReview: "/reviews",
   getReviews: "/reviews/my-reviews",
+
   getReviewById: (reviewId: string) => `/reviews/business/${reviewId}`,
+  updateReviews:(reviewId: string) => `/reviews/${reviewId}`,
   deleteReview: (reviewId: string) => `/reviews/${reviewId}`,
   replyCustomerReview: (reviewId: string) => `/reviews/${reviewId}/reply`,
 
   getMyProfileBussinesses: "/businesses/my-profile",
   pendingApproval: "/businesses/admin/pending",
+   
 
   adminDashboard: "/admin/dashboard",
   adminAnalytics: "/admin/analytics",
@@ -80,9 +90,26 @@ export const ENDPOINTS = {
   trashDetails: (trashId: string) => `/admin/trash/${trashId}`,
   restoreTrash: (trashId: string) => `/admin/trash/${trashId}/restore`,
 
-  businessAnalytics: `/business/my-profile/analytics`,
+  businessAnalytics: `/businesses/my-profile/analytics`,
   reputationCenter: `/reviews/reputation-center`,
   aiMarketing: `/ai/marketing`,
   marketingHistory: `/ai/marketing/history`,
+
+  createCategory:"/categories",
+  updateCategory:(Id: string) =>  `/categories/${Id}`,
+  deleteCategory:(Id: string) =>  `/categories/${Id}`,
+  requestCategory:"/categories/admin/requests",
+
+  careteRequestCategory:"/categories/requests",
+  CategoryReview:(Id: string) => `/categories/admin/requests/${Id}`,
+
+
+  createBookingTemplete: (slug: string) => `/categories/${slug}/booking-template`,
+  getBookingTemplete: (slug: string) => `/categories/${slug}/booking-template`,
+
+  createBookingConfig:"/businesses/my-profile/booking-config",
+  getBookingConfig:"/businesses/my-profile/booking-config",
+
+
 
 };

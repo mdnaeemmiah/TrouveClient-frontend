@@ -1,13 +1,17 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { FiArrowLeft, FiMenu } from "react-icons/fi";
+import { useProfileAvatar } from "@/src/hooks/useProfileAvatar";
 
 type UserHeaderProps = {
   onMenuClick: () => void;
 };
 
 export default function UserHeader({ onMenuClick }: UserHeaderProps) {
+  const { name, avatar, initials } = useProfileAvatar();
+
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm">
       <div className="flex items-center gap-3">
@@ -27,10 +31,23 @@ export default function UserHeader({ onMenuClick }: UserHeaderProps) {
         </Link>
       </div>
 
-      <div className="flex items-center gap-4">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
-          JD
-        </span>
+      <div className="flex items-center gap-3">
+        {name && (
+          <span className="hidden text-sm font-medium text-slate-600 sm:block">{name}</span>
+        )}
+        <Link
+          href="/userDashboard/settings"
+          aria-label="Profile settings"
+          className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-[#00663f]/30 transition hover:ring-[#00663f]"
+        >
+          {avatar ? (
+            <Image src={avatar} alt={name || "Profile"} fill className="object-cover" unoptimized />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center bg-[#00663f] text-sm font-semibold text-white">
+              {initials || "?"}
+            </span>
+          )}
+        </Link>
       </div>
     </header>
   );

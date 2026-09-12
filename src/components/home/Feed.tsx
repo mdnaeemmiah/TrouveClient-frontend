@@ -13,14 +13,15 @@ import {
   Loader2,
   MapPin,
   Rocket,
-  TrendingUp,
   ThumbsUp,
   UtensilsCrossed,
   X,
 } from "lucide-react";
+
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { useAuth } from "@/src/context/AuthContext";
+
 import {
   getStoredFollowMap,
   getStoredFollowState,
@@ -42,8 +43,23 @@ type FeedPost = {
   isFollowing?: boolean;
   createdAt?: string;
 };
-type ReportCategory = "INAPPROPRIATE" | "SPAM" | "MISCATEGORIZED" | "HARASSMENT" | "COPYRIGHT" | "OTHER";
-const reportCategories: ReportCategory[] = ["INAPPROPRIATE", "SPAM", "MISCATEGORIZED", "HARASSMENT", "COPYRIGHT", "OTHER"];
+
+type ReportCategory =
+  | "INAPPROPRIATE"
+  | "SPAM"
+  | "MISCATEGORIZED"
+  | "HARASSMENT"
+  | "COPYRIGHT"
+  | "OTHER";
+
+const reportCategories: ReportCategory[] = [
+  "INAPPROPRIATE",
+  "SPAM",
+  "MISCATEGORIZED",
+  "HARASSMENT",
+  "COPYRIGHT",
+  "OTHER",
+];
 
 const categories = [
   "Restaurants",
@@ -53,17 +69,29 @@ const categories = [
   "Wellness",
   "Home Decor",
 ];
+
 const tabs = ["Recent Updates", "Following"] as const;
+
 const fallbackIcons = [Leaf, Rocket, UtensilsCrossed];
 
 function extractPosts(payload: unknown): FeedPost[] {
-  const response = payload as { data?: FeedPost[] | { posts?: FeedPost[] } };
-  if (Array.isArray(response.data)) return response.data;
-  return response.data?.posts || (Array.isArray(payload) ? payload : []);
+  const response = payload as {
+    data?: FeedPost[] | { posts?: FeedPost[] };
+  };
+
+  if (Array.isArray(response.data)) {
+    return response.data;
+  }
+
+  return (
+    response.data?.posts ||
+    (Array.isArray(payload) ? payload : [])
+  );
 }
 
 function formatDate(date?: string) {
   if (!date) return "Recently";
+
   return new Intl.DateTimeFormat("en", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -71,16 +99,27 @@ function formatDate(date?: string) {
 }
 
 function mediaUrl(value: string) {
-  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  if (/^(https?:|data:|blob:)/i.test(value)) {
+    return value;
+  }
+
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  return apiUrl ? new URL(value, apiUrl).toString() : value;
+
+  return apiUrl
+    ? new URL(value, apiUrl).toString()
+    : value;
 }
 
 function getBusinessId(value: unknown): string | undefined {
   if (!value) return undefined;
-  if (typeof value === "string") return value;
+
+  if (typeof value === "string") {
+    return value;
+  }
+
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
+
     return (
       (typeof obj._id === "string" && obj._id) ||
       (typeof obj.id === "string" && obj.id) ||
@@ -88,72 +127,265 @@ function getBusinessId(value: unknown): string | undefined {
       undefined
     );
   }
+
   return undefined;
+}
+
+function extractViewsCount(payload: unknown): number | undefined {
+  const response = payload as {
+    data?: {
+      viewsCount?: number;
+      post?: { viewsCount?: number };
+    };
+    viewsCount?: number;
+    post?: { viewsCount?: number };
+  };
+
+  const viewsCount =
+    response.data?.viewsCount ??
+    response.data?.post?.viewsCount ??
+    response.viewsCount ??
+    response.post?.viewsCount;
+
+  return typeof viewsCount === "number"
+    ? viewsCount
+    : undefined;
 }
 
 export default function Feed() {
   const { user } = useAuth();
+
   const [activeTab, setActiveTab] =
     useState<(typeof tabs)[number]>("Recent Updates");
+
   const [posts, setPosts] = useState<FeedPost[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const [isLoadingMore, setIsLoadingMore] =
+    useState(false);
+
   const [page, setPage] = useState(1);
+
   const [hasMore, setHasMore] = useState(true);
-  const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
-  const [reportedPosts, setReportedPosts] = useState<Record<string, boolean>>(
-    {},
-  );
-  const [followedBusinesses, setFollowedBusinesses] = useState<
-    Record<string, boolean>
-  >(() => getStoredFollowMap());
+
+  const [likedPosts, setLikedPosts] =
+    useState<Record<string, boolean>>({});
+
+  const [reportedPosts, setReportedPosts] =
+    useState<Record<string, boolean>>({});
+
+  const [followedBusinesses, setFollowedBusinesses] =
+    useState<Record<string, boolean>>(
+      () => getStoredFollowMap(),
+    );
+
+  const [viewedPosts, setViewedPosts] = useState<Set<string>>(new Set());
+
+  const viewedPostsRef = useRef<Set<string>>(new Set());
+
+  /**
+   * Sentinel for infinite scroll
+   */
+  const observerTarget =
+    useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Prevent duplicate feed requests
+   */
+  const isFetchingRef = useRef(false);
+
+  const pageRef = useRef(page);
 
   useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  /**
+   * Observer used for post visibility tracking
+   */
+  const postViewObserverRef =
+    useRef<IntersectionObserver | null>(null);
+
+  const [reminderPost, setReminderPost] =
+    useState<FeedPost | null>(null);
+
+  const [reminderDate, setReminderDate] =
+    useState("");
+
+  const [reminderTime, setReminderTime] =
+    useState("");
+
+  const [isSavingReminder, setIsSavingReminder] =
+    useState(false);
+
+  const [reportPostTarget, setReportPostTarget] =
+    useState<FeedPost | null>(null);
+
+  const [reportCategory, setReportCategory] =
+    useState<ReportCategory>("INAPPROPRIATE");
+
+  const [reportDetails, setReportDetails] =
+    useState("");
+
+  const [isSubmittingReport, setIsSubmittingReport] =
+    useState(false);
+
+  const [popularCategories, setPopularCategories] =
+    useState<
+      { _id?: string; name: string }[]
+    >([]);
+
+  /**
+   * Follow state listener
+   */
+  useEffect(() => {
     setFollowedBusinesses(getStoredFollowMap());
-    const unsubscribe = subscribeToFollowChanges((bizId, isFollowing, aliasId) => {
-      setFollowedBusinesses((prev) => {
-        const next = { ...prev, [bizId]: isFollowing };
-        if (aliasId) next[aliasId] = isFollowing;
-        return next;
-      });
-    });
+
+    const unsubscribe =
+      subscribeToFollowChanges(
+        (bizId, isFollowing, aliasId) => {
+          setFollowedBusinesses((prev) => {
+            const next = {
+              ...prev,
+              [bizId]: isFollowing,
+            };
+
+            if (aliasId) {
+              next[aliasId] = isFollowing;
+            }
+
+            return next;
+          });
+        },
+      );
+
     return unsubscribe;
   }, []);
-  const [reminderPost, setReminderPost] = useState<FeedPost | null>(null);
-  const [reminderDate, setReminderDate] = useState("");
-  const [reminderTime, setReminderTime] = useState("");
-  const [isSavingReminder, setIsSavingReminder] = useState(false);
-  const [reportPostTarget, setReportPostTarget] = useState<FeedPost | null>(null);
-  const [reportCategory, setReportCategory] = useState<ReportCategory>("INAPPROPRIATE");
-  const [reportDetails, setReportDetails] = useState("");
-  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
-  const [popularCategories, setPopularCategories] = useState<{ _id?: string; name: string }[]>([]);
 
+  /**
+   * Load popular categories
+   */
   useEffect(() => {
     baseApi
       .get(ENDPOINTS.popularCategories)
       .then((res) => {
-        const payload = res.data?.data ?? res.data;
+        const payload =
+          res.data?.data ?? res.data;
+
         const list = Array.isArray(payload)
           ? payload
-          : (payload as { categories?: { _id?: string; name: string }[] })?.categories || [];
+          : (
+              payload as {
+                categories?: {
+                  _id?: string;
+                  name: string;
+                }[];
+              }
+            )?.categories || [];
+
         if (list.length > 0) {
           setPopularCategories(list);
         }
       })
       .catch(() => {
-        // keep static fallback
+        // Keep static fallback categories
       });
   }, []);
 
-  const observerTarget = useRef<HTMLDivElement | null>(null);
-  const isFetchingRef = useRef(false);
-  const pageRef = useRef(page);
-  pageRef.current = page;
+  /**
+   * Track a post view.
+   *
+   * API:
+   * POST /posts/{postId}/view
+   *
+   */
+  const trackPostView = useCallback(
+    (postId: string) => {
+      /**
+       * Prevent duplicate API calls
+       * within the same browser session.
+       */
+      if (viewedPostsRef.current.has(postId)) {
+        return;
+      }
 
+      /**
+       * Mark immediately BEFORE API request.
+       *
+       * This prevents multiple IntersectionObserver
+       * events from creating duplicate requests.
+       */
+      viewedPostsRef.current.add(postId);
+
+      setViewedPosts((prev) => {
+        const next = new Set(prev);
+
+        next.add(postId);
+
+        return next;
+      });
+
+      /**
+       */
+      baseApi
+        .post(ENDPOINTS.countView(postId), {})
+        .then(() => {
+          return baseApi
+            .get(ENDPOINTS.getView(postId))
+            .then((response) => {
+              const newViewCount = extractViewsCount(
+                response.data,
+              );
+
+              if (typeof newViewCount === "number") {
+                setPosts((current) =>
+                  current.map((item) =>
+                    item._id === postId
+                      ? {
+                          ...item,
+                          viewsCount:
+                            newViewCount,
+                        }
+                      : item,
+                  ),
+                );
+              }
+            })
+            .catch(() => {
+              // The POST already counted the view; keep duplicate protection.
+            });
+        })
+        .catch(() => {
+          viewedPostsRef.current.delete(
+            postId,
+          );
+
+          setViewedPosts((prev) => {
+            const next = new Set(prev);
+
+            next.delete(postId);
+
+            return next;
+          });
+        });
+    },
+    [],
+  );
+
+  /**
+   * Load posts
+   */
   const loadPosts = useCallback(
-    async (nextPage = 1, append = false, targetTab?: (typeof tabs)[number]) => {
-      if (isFetchingRef.current) return;
+    async (
+      nextPage = 1,
+      append = false,
+      targetTab?: (typeof tabs)[number],
+    ) => {
+      if (isFetchingRef.current) {
+        return;
+      }
+
       isFetchingRef.current = true;
 
       if (append) {
@@ -162,57 +394,125 @@ export default function Feed() {
         setIsLoading(true);
       }
 
-      const selectedTab = targetTab || activeTab;
+      const selectedTab =
+        targetTab || activeTab;
 
       try {
         const endpoint =
           selectedTab === "Following"
             ? ENDPOINTS.followingPosts
             : ENDPOINTS.getNewsFeed;
-        const response = await baseApi.get(endpoint, {
-          params: { page: nextPage, limit: 10, sort: "recent" },
-        });
-        const nextPosts = extractPosts(response.data);
 
+        const response = await baseApi.get(
+          endpoint,
+          {
+            params: {
+              page: nextPage,
+              limit: 10,
+              sort: "recent",
+            },
+          },
+        );
+
+        const nextPosts = extractPosts(
+          response.data,
+        );
+
+        /**
+         * Hydrate like state
+         */
         if (user?.id) {
-          const hydratedLikes = Object.fromEntries(
-            nextPosts.map((post) => [
-              post._id,
-              Boolean(
-                post.likes?.some((like) =>
-                  typeof like === "string"
-                    ? like === user.id
-                    : like._id === user.id,
+          const hydratedLikes =
+            Object.fromEntries(
+              nextPosts.map((post) => [
+                post._id,
+                Boolean(
+                  post.likes?.some(
+                    (like) =>
+                      typeof like === "string"
+                        ? like === user.id
+                        : like._id ===
+                          user.id,
+                  ),
                 ),
-              ),
-            ]),
-          );
-          setLikedPosts((current) => ({ ...current, ...hydratedLikes }));
+              ]),
+            );
+
+          setLikedPosts((current) => ({
+            ...current,
+            ...hydratedLikes,
+          }));
         }
 
+        /**
+         * Add posts
+         */
         setPosts((current) => {
-          if (!append) return nextPosts;
-          const existingIds = new Set(current.map((p) => p._id));
-          const uniqueNext = nextPosts.filter((p) => !existingIds.has(p._id));
-          return [...current, ...uniqueNext];
+          if (!append) {
+            return nextPosts;
+          }
+
+          const existingIds = new Set(
+            current.map((p) => p._id),
+          );
+
+          const uniqueNext =
+            nextPosts.filter(
+              (p) =>
+                !existingIds.has(p._id),
+            );
+
+          return [
+            ...current,
+            ...uniqueNext,
+          ];
         });
 
         setPage(nextPage);
 
-        const pagination = response.data?.data || response.data;
-        const meta = pagination?.meta || pagination;
-        const totalPages = meta?.totalPages || meta?.pageCount;
+        /**
+         * Pagination
+         */
+        const pagination =
+          response.data?.data ||
+          response.data;
 
-        if (nextPosts.length === 0 || nextPosts.length < 10) {
+        const meta =
+          pagination?.meta ||
+          pagination;
+
+        const totalPages =
+          meta?.totalPages ||
+          meta?.pageCount;
+
+        if (
+          nextPosts.length === 0 ||
+          nextPosts.length < 10
+        ) {
           setHasMore(false);
-        } else if (typeof totalPages === "number") {
-          setHasMore(nextPage < totalPages);
+        } else if (
+          typeof totalPages === "number"
+        ) {
+          setHasMore(
+            nextPage < totalPages,
+          );
         } else {
           setHasMore(true);
         }
-      } catch {
-        toast.error("Unable to load the news feed.");
-        if (!append) setPosts([]);
+      } catch (error) {
+        console.error(
+          "Failed to load feed:",
+          error,
+        );
+
+        toast.error(
+          "Unable to load the news feed.",
+        );
+
+        if (!append) {
+          setPosts([]);
+        }
+
         setHasMore(false);
       } finally {
         setIsLoading(false);
@@ -223,52 +523,174 @@ export default function Feed() {
     [activeTab, user],
   );
 
-  const handleTabChange = (tab: (typeof tabs)[number]) => {
-    if (tab === activeTab) return;
-    setActiveTab(tab);
-    setPosts([]);
-    setPage(1);
-    setHasMore(true);
-    void loadPosts(1, false, tab);
-  };
-
+  /**
+   * Initial feed load
+   */
   useEffect(() => {
     void loadPosts(1, false);
   }, [loadPosts]);
 
+  /**
+   * Infinite scroll observer
+   */
   useEffect(() => {
-    const target = observerTarget.current;
-    if (!target) return;
+    const target =
+      observerTarget.current;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0]?.isIntersecting &&
-          hasMore &&
-          !isLoading &&
-          !isLoadingMore &&
-          !isFetchingRef.current
-        ) {
-          void loadPosts(pageRef.current + 1, true);
-        }
-      },
-      {
-        root: null,
-        rootMargin: "300px",
-        threshold: 0.1,
-      },
-    );
+    if (!target) {
+      return;
+    }
+
+    const observer =
+      new IntersectionObserver(
+        (entries) => {
+          if (
+            entries[0]?.isIntersecting &&
+            hasMore &&
+            !isLoading &&
+            !isLoadingMore &&
+            !isFetchingRef.current
+          ) {
+            void loadPosts(
+              pageRef.current + 1,
+              true,
+            );
+          }
+        },
+        {
+          root: null,
+          rootMargin: "300px",
+          threshold: 0.1,
+        },
+      );
 
     observer.observe(target);
 
     return () => {
       observer.disconnect();
     };
-  }, [hasMore, isLoading, isLoadingMore, loadPosts]);
+  }, [
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    loadPosts,
+  ]);
 
-  const likePost = async (post: FeedPost) => {
-    const wasLiked = likedPosts[post._id] || false;
-    setLikedPosts((current) => ({ ...current, [post._id]: !wasLiked }));
+  /**
+   * =====================================================
+   * POST VIEW INTERSECTION OBSERVER
+   * =====================================================
+   *
+   * A post must be at least 50% visible.
+   */
+  useEffect(() => {
+    /**
+     * Clean previous observer
+     */
+    postViewObserverRef.current?.disconnect();
+
+    const observer =
+      new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            /**
+             * Only trigger when 50% or more
+             * of the post is visible.
+             */
+            if (
+              entry.isIntersecting &&
+              entry.intersectionRatio >= 0.5
+            ) {
+              const postId =
+                entry.target.getAttribute(
+                  "data-post-id",
+                );
+
+              if (!postId) {
+                return;
+              }
+
+              /**
+               * trackPostView itself prevents
+               * duplicate calls.
+               */
+              trackPostView(postId);
+            }
+          });
+        },
+        {
+          root: null,
+
+          /**
+           * Exact 50% threshold
+           */
+          threshold: 0.5,
+        },
+      );
+
+    postViewObserverRef.current =
+      observer;
+
+    /**
+     * Observe all currently rendered posts.
+     */
+    const postElements =
+      document.querySelectorAll(
+        "[data-post-id]",
+      );
+
+    postElements.forEach((element) => {
+      observer.observe(element);
+    });
+
+    return () => {
+      observer.disconnect();
+      postViewObserverRef.current =
+        null;
+    };
+  }, [posts, trackPostView]);
+
+  /**
+   * Tab change
+   *
+   * IMPORTANT:
+   * We do NOT reset viewedPosts here.
+   *
+   * Because switching tabs is NOT a new browser session.
+   */
+  const handleTabChange = (
+    tab: (typeof tabs)[number],
+  ) => {
+    if (tab === activeTab) {
+      return;
+    }
+
+    setActiveTab(tab);
+    setPosts([]);
+    setPage(1);
+    setHasMore(true);
+
+    void loadPosts(
+      1,
+      false,
+      tab,
+    );
+  };
+
+  /**
+   * Like post
+   */
+  const likePost = async (
+    post: FeedPost,
+  ) => {
+    const wasLiked =
+      likedPosts[post._id] || false;
+
+    setLikedPosts((current) => ({
+      ...current,
+      [post._id]: !wasLiked,
+    }));
+
     setPosts((current) =>
       current.map((item) =>
         item._id === post._id
@@ -276,24 +698,44 @@ export default function Feed() {
               ...item,
               likeCount: Math.max(
                 0,
-                (item.likeCount || 0) + (wasLiked ? -1 : 1),
+                (item.likeCount || 0) +
+                  (wasLiked ? -1 : 1),
               ),
             }
           : item,
       ),
     );
+
     try {
-      await baseApi.post(ENDPOINTS.likePost(post._id));
+      await baseApi.post(
+        ENDPOINTS.likePost(post._id),
+      );
     } catch {
-      setLikedPosts((current) => ({ ...current, [post._id]: wasLiked }));
-      toast.error("Unable to update this like.");
+      setLikedPosts((current) => ({
+        ...current,
+        [post._id]: wasLiked,
+      }));
+
+      toast.error(
+        "Unable to update this like.",
+      );
     }
   };
 
-  const openReport = (post: FeedPost) => {
-    if (reportedPosts[post._id]) return;
+  /**
+   * Report
+   */
+  const openReport = (
+    post: FeedPost,
+  ) => {
+    if (reportedPosts[post._id]) {
+      return;
+    }
+
     setReportPostTarget(post);
-    setReportCategory("INAPPROPRIATE");
+    setReportCategory(
+      "INAPPROPRIATE",
+    );
     setReportDetails("");
   };
 
@@ -303,28 +745,73 @@ export default function Feed() {
   };
 
   const reportPost = async () => {
-    if (!reportPostTarget || reportDetails.trim().length < 5) {
-      toast.error("Please provide at least 5 characters explaining the report.");
+    if (
+      !reportPostTarget ||
+      reportDetails.trim().length < 5
+    ) {
+      toast.error(
+        "Please provide at least 5 characters explaining the report.",
+      );
+
       return;
     }
+
     setIsSubmittingReport(true);
+
     try {
-      await baseApi.post(ENDPOINTS.reportPost(reportPostTarget._id), {
-        reasonCategory: reportCategory,
-        reasonDetails: reportDetails.trim(),
-      });
-      setReportedPosts((current) => ({ ...current, [reportPostTarget._id]: true }));
+      await baseApi.post(
+        ENDPOINTS.reportPost(
+          reportPostTarget._id,
+        ),
+        {
+          reasonCategory:
+            reportCategory,
+          reasonDetails:
+            reportDetails.trim(),
+        },
+      );
+
+      setReportedPosts((current) => ({
+        ...current,
+        [reportPostTarget._id]:
+          true,
+      }));
+
       closeReport();
-      toast.success("Post reported.");
+
+      toast.success(
+        "Post reported.",
+      );
     } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
-      toast.error(Array.isArray(message) ? message.join(" ") : message || "Unable to report this post.");
+      const message = (
+        error as {
+          response?: {
+            data?: {
+              message?:
+                | string
+                | string[];
+            };
+          };
+        }
+      ).response?.data?.message;
+
+      toast.error(
+        Array.isArray(message)
+          ? message.join(" ")
+          : message ||
+              "Unable to report this post.",
+      );
     } finally {
       setIsSubmittingReport(false);
     }
   };
 
-  const openReminder = (post: FeedPost) => {
+  /**
+   * Reminder
+   */
+  const openReminder = (
+    post: FeedPost,
+  ) => {
     setReminderPost(post);
     setReminderDate("");
     setReminderTime("");
@@ -337,103 +824,258 @@ export default function Feed() {
   };
 
   const remindPost = async () => {
-    if (!reminderPost || !reminderDate || !reminderTime) {
-      toast.error("Please select a reminder date and time.");
+    if (
+      !reminderPost ||
+      !reminderDate ||
+      !reminderTime
+    ) {
+      toast.error(
+        "Please select a reminder date and time.",
+      );
+
       return;
     }
-    const reminderDateTime = new Date(`${reminderDate}T${reminderTime}`);
-    if (Number.isNaN(reminderDateTime.getTime()) || reminderDateTime <= new Date()) {
-      toast.error("Please choose a future date and time.");
+
+    const reminderDateTime =
+      new Date(
+        `${reminderDate}T${reminderTime}`,
+      );
+
+    if (
+      Number.isNaN(
+        reminderDateTime.getTime(),
+      ) ||
+      reminderDateTime <= new Date()
+    ) {
+      toast.error(
+        "Please choose a future date and time.",
+      );
+
       return;
     }
+
     setIsSavingReminder(true);
+
     try {
-      await baseApi.post(ENDPOINTS.remindPost, {
-        postId: reminderPost._id,
-        reminderDate: reminderDateTime.toISOString(),
-      });
+      await baseApi.post(
+        ENDPOINTS.remindPost,
+        {
+          postId:
+            reminderPost._id,
+          reminderDate:
+            reminderDateTime.toISOString(),
+        },
+      );
+
       closeReminder();
-      toast.success("Reminder added.");
+
+      toast.success(
+        "Reminder added.",
+      );
     } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
-      toast.error(Array.isArray(message) ? message.join(" ") : message || "Unable to add a reminder.");
+      const message = (
+        error as {
+          response?: {
+            data?: {
+              message?:
+                | string
+                | string[];
+            };
+          };
+        }
+      ).response?.data?.message;
+
+      toast.error(
+        Array.isArray(message)
+          ? message.join(" ")
+          : message ||
+              "Unable to add a reminder.",
+      );
     } finally {
       setIsSavingReminder(false);
     }
   };
 
-  const toggleFollow = async (post: FeedPost) => {
-    const rawPost = post as unknown as Record<string, unknown>;
-    const businessId =
-      getBusinessId(post.businessId) ||
-      getBusinessId(rawPost.business) ||
-      getBusinessId(rawPost.businessProfile);
-    if (!businessId)
-      return toast.error("This post has no business profile.");
-    if (user?.role !== "customer") {
-      return toast.error("Only customer accounts can follow businesses.");
-    }
-    const currentStored = getStoredFollowState(businessId);
-    const wasFollowing =
-      typeof currentStored === "boolean"
-        ? currentStored
-        : (followedBusinesses[businessId] ?? Boolean(post.isFollowing));
-    const nextFollowing = !wasFollowing;
+  /**
+   * Follow business
+   */
+  const toggleFollow = async (
+    post: FeedPost,
+  ) => {
+    const rawPost =
+      post as unknown as Record<
+        string,
+        unknown
+      >;
 
-    setFollowedBusinesses((current) => ({
-      ...current,
-      [businessId]: nextFollowing,
-    }));
-    setStoredFollowState(businessId, nextFollowing);
+    const businessId =
+      getBusinessId(
+        post.businessId,
+      ) ||
+      getBusinessId(
+        rawPost.business,
+      ) ||
+      getBusinessId(
+        rawPost.businessProfile,
+      );
+
+    if (!businessId) {
+      toast.error(
+        "This post has no business profile.",
+      );
+
+      return;
+    }
+
+    if (user?.role !== "customer") {
+      toast.error(
+        "Only customer accounts can follow businesses.",
+      );
+
+      return;
+    }
+
+    const currentStored =
+      getStoredFollowState(
+        businessId,
+      );
+
+    const wasFollowing =
+      typeof currentStored ===
+      "boolean"
+        ? currentStored
+        : (
+            followedBusinesses[
+              businessId
+            ] ??
+            Boolean(
+              post.isFollowing,
+            )
+          );
+
+    const nextFollowing =
+      !wasFollowing;
+
+    setFollowedBusinesses(
+      (current) => ({
+        ...current,
+        [businessId]:
+          nextFollowing,
+      }),
+    );
+
+    setStoredFollowState(
+      businessId,
+      nextFollowing,
+    );
 
     try {
-      const res = await baseApi.post(ENDPOINTS.followBusiness(businessId));
-      const resData = res.data?.data ?? res.data;
-      const serverState = resData?.isFollowing;
-      const finalState = typeof serverState === "boolean" ? serverState : nextFollowing;
+      const res =
+        await baseApi.post(
+          ENDPOINTS.followBusiness(
+            businessId,
+          ),
+        );
 
-      setFollowedBusinesses((current) => ({
-        ...current,
-        [businessId]: finalState,
-      }));
-      setStoredFollowState(businessId, finalState);
+      const resData =
+        res.data?.data ??
+        res.data;
+
+      const serverState =
+        resData?.isFollowing;
+
+      const finalState =
+        typeof serverState ===
+        "boolean"
+          ? serverState
+          : nextFollowing;
+
+      setFollowedBusinesses(
+        (current) => ({
+          ...current,
+          [businessId]:
+            finalState,
+        }),
+      );
+
+      setStoredFollowState(
+        businessId,
+        finalState,
+      );
 
       toast.success(
-        finalState ? "Following business." : "Unfollowed business.",
+        finalState
+          ? "Following business."
+          : "Unfollowed business.",
       );
     } catch (error: unknown) {
-      setFollowedBusinesses((current) => ({
-        ...current,
-        [businessId]: wasFollowing,
-      }));
-      setStoredFollowState(businessId, wasFollowing);
-      const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
-      toast.error(Array.isArray(message) ? message.join(" ") : message || "Unable to update following status.");
+      setFollowedBusinesses(
+        (current) => ({
+          ...current,
+          [businessId]:
+            wasFollowing,
+        }),
+      );
+
+      setStoredFollowState(
+        businessId,
+        wasFollowing,
+      );
+
+      const message = (
+        error as {
+          response?: {
+            data?: {
+              message?:
+                | string
+                | string[];
+            };
+          };
+        }
+      ).response?.data?.message;
+
+      toast.error(
+        Array.isArray(message)
+          ? message.join(" ")
+          : message ||
+              "Unable to update following status.",
+      );
     }
   };
 
   return (
     <div className="min-h-screen bg-[#f7f7fa]">
       <div className="mx-auto grid grid-cols-1 items-start gap-5 px-5 py-8 md:px-6 lg:grid-cols-[240px_1fr_260px] lg:px-[max(30px,calc((100vw-1400px)/2))] lg:py-10">
+
+        {/* LEFT SIDEBAR */}
         <aside className="space-y-5 lg:order-1 lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-105px)] lg:overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="rounded-2xl border border-[#eef0f1] bg-white p-5">
             <h2 className="text-[15px] font-bold text-[#00663f]">
               Popular Categories
             </h2>
+
             <div className="mt-3 flex flex-wrap gap-2">
-              {(popularCategories.length > 0
-                ? popularCategories.map((c) => c.name)
+              {(popularCategories.length >
+              0
+                ? popularCategories.map(
+                    (c) => c.name,
+                  )
                 : categories
-              ).map((categoryName) => (
-                <Link
-                  key={categoryName}
-                  href={`/search?query=${encodeURIComponent(categoryName)}`}
-                  className="rounded-full bg-[#f1f2f4] px-3 py-1.5 text-[12px] font-medium text-[#3a3d40] transition hover:bg-[#00663f] hover:text-white"
-                >
-                  {categoryName}
-                </Link>
-              ))}
+              ).map(
+                (categoryName) => (
+                  <Link
+                    key={categoryName}
+                    href={`/search?query=${encodeURIComponent(
+                      categoryName,
+                    )}`}
+                    className="rounded-full bg-[#f1f2f4] px-3 py-1.5 text-[12px] font-medium text-[#3a3d40] transition hover:bg-[#00663f] hover:text-white"
+                  >
+                    {categoryName}
+                  </Link>
+                ),
+              )}
             </div>
+
             <Link
               href="/#categories"
               className="mt-3 inline-block text-[12px] font-semibold text-[#00663f] hover:underline"
@@ -441,32 +1083,49 @@ export default function Feed() {
               See all categories
             </Link>
           </div>
+
           <div className="rounded-2xl border border-[#eef0f1] bg-white p-5">
             <h2 className="text-[15px] font-bold text-[#00663f]">
               France News
             </h2>
+
             <p className="mt-2 text-[12px] text-[#5c6168]">
-              Check out local market updates and new business laws in France.
+              Check out local market
+              updates and new business
+              laws in France.
             </p>
           </div>
         </aside>
+
+        {/* MAIN */}
         <main className="min-w-0 lg:order-2">
+
+          {/* TABS */}
           <div className="flex items-center gap-6 border-b border-[#eef0f1]">
             {tabs.map((tab) => (
               <button
                 key={tab}
                 type="button"
-                onClick={() => handleTabChange(tab)}
-                className={`relative pb-3 text-[14px] font-semibold ${activeTab === tab ? "text-[#00663f]" : "text-[#9a9da1]"}`}
+                onClick={() =>
+                  handleTabChange(tab)
+                }
+                className={`relative pb-3 text-[14px] font-semibold ${
+                  activeTab === tab
+                    ? "text-[#00663f]"
+                    : "text-[#9a9da1]"
+                }`}
               >
                 {tab}
+
                 {activeTab === tab && (
                   <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[#00663f]" />
                 )}
               </button>
             ))}
           </div>
-          <div className="mt-5 space-y-5">
+
+          {/* POSTS */}
+          <div className="mt-6 space-y-5">
             {isLoading ? (
               <div className="flex justify-center rounded-2xl bg-white p-12 text-[#00663f]">
                 <Loader2 className="animate-spin" />
@@ -476,159 +1135,347 @@ export default function Feed() {
                 No published updates found.
               </div>
             ) : (
-              posts.map((post, index) => {
-                const Icon = fallbackIcons[index % fallbackIcons.length];
-                const attachment = post.attachments?.[0];
-                const liked = likedPosts[post._id] || false;
-                const rawPost = post as unknown as Record<string, unknown>;
-                const businessId =
-                  getBusinessId(post.businessId) ||
-                  getBusinessId(rawPost.business) ||
-                  getBusinessId(rawPost.businessProfile);
-                const storedFollow = businessId ? getStoredFollowState(businessId) : null;
-                const isFollowing = businessId
-                  ? (typeof storedFollow === "boolean"
-                      ? storedFollow
-                      : (followedBusinesses[businessId] ?? Boolean(post.isFollowing)))
-                  : false;
-                return (
-                  <article
-                    key={post._id}
-                    className="rounded-2xl border border-[#eef0f1] bg-white p-5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e4f3ec] text-[#00663f]">
-                          <Icon size={18} />
-                        </span>
-                        <div>
-                          <p className="text-[14px] font-bold text-[#1c1d22]">
-                            Business update
-                          </p>
-                          <p className="text-[12px] text-[#8a8d91]">
-                            {formatDate(post.createdAt)} ·{" "}
-                            {post.status || "Published"}
-                          </p>
+              posts.map(
+                (post, index) => {
+                  const Icon =
+                    fallbackIcons[
+                      index %
+                        fallbackIcons.length
+                    ];
+
+                  const attachment =
+                    post.attachments?.[0];
+
+                  const liked =
+                    likedPosts[
+                      post._id
+                    ] || false;
+
+                  const rawPost =
+                    post as unknown as Record<
+                      string,
+                      unknown
+                    >;
+
+                  const businessId =
+                    getBusinessId(
+                      post.businessId,
+                    ) ||
+                    getBusinessId(
+                      rawPost.business,
+                    ) ||
+                    getBusinessId(
+                      rawPost.businessProfile,
+                    );
+
+                  const storedFollow =
+                    businessId
+                      ? getStoredFollowState(
+                          businessId,
+                        )
+                      : null;
+
+                  const isFollowing =
+                    businessId
+                      ? typeof storedFollow ===
+                        "boolean"
+                        ? storedFollow
+                        : (
+                            followedBusinesses[
+                              businessId
+                            ] ??
+                            Boolean(
+                              post.isFollowing,
+                            )
+                          )
+                      : false;
+
+                  return (
+                    <article
+                      key={post._id}
+                      data-post-id={
+                        post._id
+                      }
+                      className="rounded-2xl border border-[#eef0f1] bg-white p-5 transition-shadow hover:shadow-md"
+                    >
+                      {/* POST HEADER */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e4f3ec] text-[#00663f]">
+                            <Icon size={18} />
+                          </span>
+
+                          <div>
+                            <p className="text-[14px] font-bold text-[#1c1d22]">
+                              Business update
+                            </p>
+
+                            <p className="text-[12px] text-[#8a8d91]">
+                              {formatDate(
+                                post.createdAt,
+                              )}{" "}
+                              ·{" "}
+                              {post.status ||
+                                "Published"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-[#edf7f2] px-3 py-1 text-[11px] font-bold text-[#00663f]">
+                            Live
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void toggleFollow(
+                                post,
+                              )
+                            }
+                            className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${
+                              isFollowing
+                                ? "bg-[#00663f] text-white"
+                                : "border border-[#c7d8cd] bg-white text-[#00663f] hover:bg-[#edf7f2]"
+                            }`}
+                          >
+                            {isFollowing
+                              ? "Following"
+                              : "Follow"}
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-[#edf7f2] px-3 py-1 text-[11px] font-bold text-[#00663f]">
-                          Live
-                        </span>
+
+                      {/* TITLE */}
+                      <h2 className="mt-4 text-lg font-bold text-slate-900">
+                        {post.title ||
+                          "Business update"}
+                      </h2>
+
+                      {/* CONTENT */}
+                      <p className="mt-2 text-[13px] leading-relaxed text-[#3a3d40]">
+                        {post.content ||
+                          "No description provided."}
+                      </p>
+
+                      {/* ATTACHMENT */}
+                      {attachment &&
+                        (/\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(
+                          attachment,
+                        ) ? (
+                          <div className="mt-4 overflow-hidden rounded-xl bg-slate-100">
+                            <img
+                              src={mediaUrl(
+                                attachment,
+                              )}
+                              alt={
+                                post.title ||
+                                "Post attachment"
+                              }
+                              className="max-h-80 w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <a
+                            href={mediaUrl(
+                              attachment,
+                            )}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-4 flex items-center gap-3 rounded-xl border border-[#eef0f1] bg-[#f7f7fa] p-3"
+                          >
+                            <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#00663f] text-white">
+                              <FileText
+                                size={20}
+                              />
+                            </span>
+
+                            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">
+                              Open attachment
+                            </span>
+
+                            <Download
+                              size={16}
+                              className="text-[#00663f]"
+                            />
+                          </a>
+                        ))}
+
+                      {/* POST FOOTER */}
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
+
+                        {/* LIKE */}
                         <button
                           type="button"
-                          onClick={() => void toggleFollow(post)}
-                          className={`rounded-full px-3 py-1 text-[11px] font-bold transition ${isFollowing ? "bg-[#00663f] text-white" : "border border-[#c7d8cd] bg-white text-[#00663f] hover:bg-[#edf7f2]"}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            void likePost(
+                              post,
+                            );
+                          }}
+                          aria-label={
+                            liked
+                              ? "Unlike post"
+                              : "Like post"
+                          }
+                          aria-pressed={
+                            liked
+                          }
+                          className={`flex items-center gap-1.5 text-[13px] font-medium ${
+                            liked
+                              ? "text-[#00663f]"
+                              : "text-[#5c6168]"
+                          }`}
                         >
-                          {isFollowing ? "Following" : "Follow"}
-                        </button>
-                      </div>
-                    </div>
-                    <h2 className="mt-4 text-lg font-bold text-slate-900">
-                      {post.title || "Business update"}
-                    </h2>
-                    <p className="mt-2 text-[13px] leading-relaxed text-[#3a3d40]">
-                      {post.content || "No description provided."}
-                    </p>
-                    {attachment &&
-                      (/\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(attachment) ? (
-                        <div className="mt-4 overflow-hidden rounded-xl bg-slate-100">
-                          <img
-                            src={mediaUrl(attachment)}
-                            alt={post.title || "Post attachment"}
-                            className="max-h-80 w-full object-cover"
+                          <ThumbsUp
+                            size={15}
+                            fill={
+                              liked
+                                ? "currentColor"
+                                : "none"
+                            }
                           />
+
+                          {post.likeCount ||
+                            0}
+                        </button>
+
+                        {/* RIGHT ACTIONS */}
+                        <div className="flex items-center gap-3">
+
+                          {/* VIEW COUNT */}
+                          <span
+                            className={`text-xs font-medium ${
+                              viewedPosts.has(
+                                post._id,
+                              )
+                                ? "rounded-full bg-green-100 px-2 py-1 text-green-600"
+                                : "text-slate-500"
+                            }`}
+                          >
+                            👁️{" "}
+                            {post.viewsCount ||
+                              0}{" "}
+                            views{" "}
+                            {viewedPosts.has(
+                              post._id,
+                            )
+                              ? "(viewed)"
+                              : ""}
+                          </span>
+
+                          {/* REMINDER */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openReminder(
+                                post,
+                              )
+                            }
+                            className="text-xs font-semibold text-[#00663f]"
+                          >
+                            Remind me
+                          </button>
+
+                          {/* REPORT */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              openReport(
+                                post,
+                              )
+                            }
+                            disabled={
+                              reportedPosts[
+                                post._id
+                              ]
+                            }
+                            className="text-slate-400 hover:text-red-500 disabled:text-red-500"
+                          >
+                            <Flag size={14} />
+                          </button>
                         </div>
-                      ) : (
-                        <a
-                          href={mediaUrl(attachment)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-4 flex items-center gap-3 rounded-xl border border-[#eef0f1] bg-[#f7f7fa] p-3"
-                        >
-                          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#00663f] text-white">
-                            <FileText size={20} />
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">
-                            Open attachment
-                          </span>
-                          <Download size={16} className="text-[#00663f]" />
-                        </a>
-                      ))}
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => void likePost(post)}
-                        aria-label={liked ? "Unlike post" : "Like post"}
-                        aria-pressed={liked}
-                        className={`flex items-center gap-1.5 text-[13px] font-medium ${liked ? "text-[#00663f]" : "text-[#5c6168]"}`}
-                      >
-                        <ThumbsUp
-                          size={15}
-                          fill={liked ? "currentColor" : "none"}
-                        />{" "}
-                        {post.likeCount || 0}
-                      </button>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500">
-                          {post.viewsCount || 0} views
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => openReminder(post)}
-                          className="text-xs font-semibold text-[#00663f]"
-                        >
-                          Remind me
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openReport(post)}
-                          disabled={reportedPosts[post._id]}
-                          className="text-slate-400 hover:text-red-500 disabled:text-red-500"
-                        >
-                          <Flag size={14} />
-                        </button>
                       </div>
-                    </div>
-                  </article>
-                );
-              })
+                    </article>
+                  );
+                },
+              )
             )}
           </div>
-          {/* Infinite Scroll Trigger Sentinel */}
-          <div ref={observerTarget} className="h-6 w-full" />
+
+          {/* INFINITE SCROLL SENTINEL */}
+          <div
+            ref={observerTarget}
+            className="h-6 w-full"
+          />
 
           {isLoadingMore && (
             <div className="mt-4 flex items-center justify-center gap-2 py-4 text-[#00663f]">
-              <Loader2 className="animate-spin" size={20} />
-              <span className="text-xs font-semibold text-slate-600">Loading more updates...</span>
+              <Loader2
+                className="animate-spin"
+                size={20}
+              />
+
+              <span className="text-xs font-semibold text-slate-600">
+                Loading more updates...
+              </span>
             </div>
           )}
 
-          {!hasMore && posts.length > 0 && !isLoading && (
-            <div className="mt-6 rounded-2xl border border-[#eef0f1] bg-white py-4 text-center text-xs font-medium text-slate-400">
-              🎉 You&apos;re all caught up! No more updates to show.
-            </div>
-          )}
+          {!hasMore &&
+            posts.length > 0 &&
+            !isLoading && (
+              <div className="mt-6 rounded-2xl border border-[#eef0f1] bg-white py-4 text-center text-xs font-medium text-slate-400">
+                🎉 You&apos;re all caught
+                up! No more updates to
+                show.
+              </div>
+            )}
         </main>
+
+        {/* RIGHT SIDEBAR */}
         <aside className="space-y-5 lg:order-3 lg:sticky lg:top-[90px] lg:self-start lg:max-h-[calc(100vh-105px)] lg:overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="rounded-2xl border border-[#eef0f1] bg-white p-5">
             <h2 className="text-[15px] font-bold text-[#00663f]">
               Feed summary
             </h2>
+
             <div className="mt-4 space-y-3 text-sm text-slate-600">
               <p className="flex items-center gap-2">
-                <MapPin size={15} className="text-[#00663f]" /> {posts.length}{" "}
-                updates loaded
+                <MapPin
+                  size={15}
+                  className="text-[#00663f]"
+                />
+
+                {posts.length} updates
+                loaded
               </p>
+
               <p className="flex items-center gap-2">
-                <TrendingUp size={15} className="text-[#00663f]" /> Live
-                business news
+                <ThumbsUp
+                  size={15}
+                  className="text-[#00663f]"
+                />
+
+                {viewedPosts.size} posts
+                viewed this session
+              </p>
+
+              <p className="flex items-center gap-2">
+                <Loader2
+                  size={15}
+                  className="text-[#00663f]"
+                />
+
+                Live business news
               </p>
             </div>
           </div>
         </aside>
       </div>
+
+      {/* REMINDER MODAL */}
       {reminderPost && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -636,35 +1483,257 @@ export default function Feed() {
         >
           <div
             className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(event) =>
+              event.stopPropagation()
+            }
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Set a reminder</h2>
-                <p className="mt-1 text-sm text-slate-500">Choose when you want to be reminded about this update.</p>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Set a reminder
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Choose when you want
+                  to be reminded about
+                  this update.
+                </p>
               </div>
-              <button type="button" onClick={closeReminder} aria-label="Close reminder dialog" className="text-slate-400 hover:text-slate-700"><X size={18} /></button>
+
+              <button
+                type="button"
+                onClick={
+                  closeReminder
+                }
+                aria-label="Close reminder dialog"
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X size={18} />
+              </button>
             </div>
-            <p className="mt-4 truncate rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">{reminderPost.title || "Business update"}</p>
+
+            <p className="mt-4 truncate rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+              {reminderPost.title ||
+                "Business update"}
+            </p>
+
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="text-sm font-semibold text-slate-700"><span className="flex items-center gap-1.5"><Calendar size={14} className="text-[#00663f]" />Date</span><input type="date" min={new Date().toISOString().slice(0, 10)} value={reminderDate} onChange={(event) => setReminderDate(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#00663f] focus:ring-2 focus:ring-[#00663f]/10" /></label>
-              <label className="text-sm font-semibold text-slate-700">Time<input type="time" value={reminderTime} onChange={(event) => setReminderTime(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#00663f] focus:ring-2 focus:ring-[#00663f]/10" /></label>
+              <label className="text-sm font-semibold text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <Calendar
+                    size={14}
+                    className="text-[#00663f]"
+                  />
+                  Date
+                </span>
+
+                <input
+                  type="date"
+                  min={
+                    new Date()
+                      .toISOString()
+                      .slice(
+                        0,
+                        10,
+                      )
+                  }
+                  value={
+                    reminderDate
+                  }
+                  onChange={(event) =>
+                    setReminderDate(
+                      event.target
+                        .value,
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#00663f] focus:ring-2 focus:ring-[#00663f]/10"
+                />
+              </label>
+
+              <label className="text-sm font-semibold text-slate-700">
+                Time
+
+                <input
+                  type="time"
+                  value={
+                    reminderTime
+                  }
+                  onChange={(event) =>
+                    setReminderTime(
+                      event.target
+                        .value,
+                    )
+                  }
+                  className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#00663f] focus:ring-2 focus:ring-[#00663f]/10"
+                />
+              </label>
             </div>
-            <div className="mt-5 flex justify-end gap-3 border-t border-slate-100 pt-4"><button type="button" onClick={closeReminder} disabled={isSavingReminder} className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-600 disabled:opacity-60">Cancel</button><button type="button" onClick={() => void remindPost()} disabled={isSavingReminder} className="flex items-center gap-2 rounded-xl bg-[#00663f] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{isSavingReminder && <Loader2 size={15} className="animate-spin" />}Save reminder</button></div>
+
+            <div className="mt-5 flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={
+                  closeReminder
+                }
+                disabled={
+                  isSavingReminder
+                }
+                className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-600 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void remindPost()
+                }
+                disabled={
+                  isSavingReminder
+                }
+                className="flex items-center gap-2 rounded-xl bg-[#00663f] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {isSavingReminder && (
+                  <Loader2
+                    size={15}
+                    className="animate-spin"
+                  />
+                )}
+
+                Save reminder
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* REPORT MODAL */}
       {reportPostTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeReport}>
-          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeReport}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
             <div className="flex items-start justify-between gap-4">
-              <div><h2 className="text-lg font-bold text-slate-900">Report post</h2><p className="mt-1 text-sm text-slate-500">Tell us why this post should be reviewed.</p></div>
-              <button type="button" onClick={closeReport} aria-label="Close report dialog" className="text-slate-400 hover:text-slate-700"><X size={18} /></button>
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Report post
+                </h2>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Tell us why this post
+                  should be reviewed.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeReport}
+                aria-label="Close report dialog"
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X size={18} />
+              </button>
             </div>
-            <p className="mt-4 truncate rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">{reportPostTarget.title || "Business update"}</p>
-            <label className="mt-4 block text-sm font-semibold text-slate-700">Reason<select value={reportCategory} onChange={(event) => setReportCategory(event.target.value as ReportCategory)} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#00663f] focus:ring-2 focus:ring-[#00663f]/10">{reportCategories.map((category) => <option key={category} value={category}>{category.replace("_", " ")}</option>)}</select></label>
-            <label className="mt-4 block text-sm font-semibold text-slate-700">Details<textarea value={reportDetails} onChange={(event) => setReportDetails(event.target.value)} maxLength={1000} minLength={5} rows={4} placeholder="Please explain the issue..." className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#00663f] focus:ring-2 focus:ring-[#00663f]/10" /></label>
-            <div className="mt-5 flex justify-end gap-3 border-t border-slate-100 pt-4"><button type="button" onClick={closeReport} disabled={isSubmittingReport} className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-600 disabled:opacity-60">Cancel</button><button type="button" onClick={() => void reportPost()} disabled={isSubmittingReport || reportDetails.trim().length < 5} className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{isSubmittingReport && <Loader2 size={15} className="animate-spin" />}Submit report</button></div>
+
+            <p className="mt-4 truncate rounded-lg bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+              {reportPostTarget.title ||
+                "Business update"}
+            </p>
+
+            <label className="mt-4 block text-sm font-semibold text-slate-700">
+              Reason
+
+              <select
+                value={
+                  reportCategory
+                }
+                onChange={(event) =>
+                  setReportCategory(
+                    event.target
+                      .value as ReportCategory,
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#00663f] focus:ring-2 focus:ring-[#00663f]/10"
+              >
+                {reportCategories.map(
+                  (category) => (
+                    <option
+                      key={category}
+                      value={
+                        category
+                      }
+                    >
+                      {category.replace(
+                        "_",
+                        " ",
+                      )}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+
+            <label className="mt-4 block text-sm font-semibold text-slate-700">
+              Details
+
+              <textarea
+                value={
+                  reportDetails
+                }
+                onChange={(event) =>
+                  setReportDetails(
+                    event.target
+                      .value,
+                  )
+                }
+                maxLength={1000}
+                minLength={5}
+                rows={4}
+                placeholder="Please explain the issue..."
+                className="mt-2 w-full resize-none rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal outline-none focus:border-[#00663f] focus:ring-2 focus:ring-[#00663f]/10"
+              />
+            </label>
+
+            <div className="mt-5 flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={closeReport}
+                disabled={
+                  isSubmittingReport
+                }
+                className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-600 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void reportPost()
+                }
+                disabled={
+                  isSubmittingReport ||
+                  reportDetails.trim()
+                    .length < 5
+                }
+                className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {isSubmittingReport && (
+                  <Loader2
+                    size={15}
+                    className="animate-spin"
+                  />
+                )}
+
+                Submit report
+              </button>
+            </div>
           </div>
         </div>
       )}

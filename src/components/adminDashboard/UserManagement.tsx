@@ -16,6 +16,7 @@ import {
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { toast } from "sonner";
+import CustomSelect from "@/src/components/ui/CustomSelect";
 
 type Role = "Business Owner" | "Customer" | "Admin";
 type Status = "Active" | "Flagged" | "Banned";
@@ -291,15 +292,21 @@ export default function UserManagement() {
       <div className="rounded-2xl bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600">
               <FiFilter className="text-[14px]" />
-              <select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as ApiStatus | ""); setPage(1); }} className="bg-transparent outline-none">
-                <option value="">All statuses</option>
-                <option value="ACTIVE">Active</option>
-                <option value="FLAGGED">Flagged</option>
-                <option value="BANNED">Banned</option>
-              </select>
-            </label>
+              <CustomSelect
+                value={statusFilter}
+                onChange={(val) => { setStatusFilter(val as ApiStatus | ""); setPage(1); }}
+                placeholder="All statuses"
+                options={[
+                  { value: "", label: "All statuses" },
+                  { value: "ACTIVE", label: "Active" },
+                  { value: "FLAGGED", label: "Flagged" },
+                  { value: "BANNED", label: "Banned" },
+                ]}
+                className="w-36"
+              />
+            </div>
 
             <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
               {tabs.map((tab) => (
@@ -360,20 +367,20 @@ export default function UserManagement() {
                   </td>
                   <td className="py-3 text-slate-500">{user.joined}</td>
                   <td className="py-3">
-                    <select
+                    <CustomSelect
                       value={user.status.toUpperCase()}
-                      onChange={(event) => {
-                        const nextStatus = event.target.value as ApiStatus;
+                      onChange={(val) => {
+                        const nextStatus = val as ApiStatus;
                         if (nextStatus === "FLAGGED" || nextStatus === "BANNED") setStatusTarget({ user, status: nextStatus });
                         else void updateUserStatus(user, nextStatus);
                       }}
-                      className={`rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold outline-none focus:border-[#00663f] ${statusStyles[user.status]}`}
-                      aria-label={`Change status for ${user.name}`}
-                    >
-                      <option value="ACTIVE">Active</option>
-                      <option value="FLAGGED">Flagged</option>
-                      <option value="BANNED">Banned</option>
-                    </select>
+                      options={[
+                        { value: "ACTIVE", label: "Active" },
+                        { value: "FLAGGED", label: "Flagged" },
+                        { value: "BANNED", label: "Banned" },
+                      ]}
+                      className={`w-32 text-xs ${statusStyles[user.status]}`}
+                    />
                   </td>
                   <td className="py-3">
                     <button type="button" onClick={() => setOpenActionId((current) => current === user.id ? null : user.id)} aria-label={`Actions for ${user.name}`} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
@@ -397,11 +404,16 @@ export default function UserManagement() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm">
           <label className="flex items-center gap-2 text-sm text-slate-500">
             Per page
-            <select value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }} className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-700">
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
+            <CustomSelect
+              value={String(limit)}
+              onChange={(val) => { setLimit(Number(val)); setPage(1); }}
+              options={[
+                { value: "10", label: "10" },
+                { value: "25", label: "25" },
+                { value: "50", label: "50" },
+              ]}
+              className="w-20"
+            />
           </label>
           <div className="flex items-center gap-3 text-sm text-slate-500">
             <span>Page {page} of {Math.max(1, Math.ceil((totalUsers || filteredUsers.length) / limit))}</span>

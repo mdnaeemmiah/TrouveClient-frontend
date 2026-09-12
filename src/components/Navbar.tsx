@@ -1,11 +1,13 @@
 ﻿"use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Menu, User } from "lucide-react";
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useAuth } from "@/src/context/AuthContext";
+import { useProfileAvatar } from "@/src/hooks/useProfileAvatar";
 
 const BUSINESS_SUBMISSION_KEY = "business_submission";
 
@@ -27,10 +29,33 @@ const navItems: { label: string; href: string; match: string | null }[] = [
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { name, avatar, initials } = useProfileAvatar();
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // refresh avatar when profile is saved from any settings page
+  const [avatarKey, setAvatarKey] = useState(0);
+  
+  useEffect(() => {
+    const handler = () => setAvatarKey((k) => k + 1);
+    window.addEventListener("profile-updated", handler);
+    return () => window.removeEventListener("profile-updated", handler);
+  }, []);
+
+  // live avatar/name from localStorage + fresh API (re-runs on avatarKey change)
+  // Safe localStorage access
+  const getLocalStorage = (key: string) => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(key);
+  };
+  
+  const liveAvatar = avatarKey >= 0 ? (getLocalStorage("profile_image") ?? avatar) : avatar;
+  const liveName = avatarKey >= 0 ? (getLocalStorage("profile_name") ?? name) : name;
+  const liveInitials = liveName
+    ? liveName.split(" ").map((p: string) => p[0]).join("").slice(0, 2).toUpperCase()
+    : initials;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -97,11 +122,17 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-[#00663f] text-white"
+              className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-[#00663f]/30 transition hover:ring-[#00663f]"
               aria-label="Account menu"
               aria-expanded={open}
             >
-              <User size={16} />
+              {liveAvatar ? (
+                <Image src={liveAvatar} alt={liveName || "Profile"} fill className="object-cover" unoptimized />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center bg-[#00663f] text-sm font-semibold text-white">
+                  {liveInitials || (user?.name?.charAt(0).toUpperCase()) || "?"}
+                </span>
+              )}
             </button>
             {open && (
               <div className="absolute right-0 top-11 z-50 w-52 rounded-lg border border-[#eef0f1] bg-white py-2 shadow-[0_8px_22px_#1a1a1a14]">

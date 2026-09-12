@@ -30,3 +30,37 @@ input::placeholder,
 textarea::placeholder {
   color: #94a3b8;
 }
+
+/* ── Global select styling ── */
+select {
+  border-radius: 0.75rem;          /* rounded-xl */
+  border: 1.5px solid #e2e8f0;
+  background-color: #f0faf5;       /* halka green */
+  padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2300663f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 1rem;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+select:focus {
+  border-color: #00663f;
+  box-shadow: 0 0 0 3px rgba(0, 102, 63, 0.12);
+}
+
+select option:checked,
+select option:focus {
+  background-color: #00663f;
+  color: #ffffff;
+}
+
+select option {
+  background-color: #ffffff;
+  color: #172033;
+  border-radius: 0;
+}

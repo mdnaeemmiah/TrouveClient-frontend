@@ -6,6 +6,7 @@ import { FiCheckCircle, FiChevronLeft, FiChevronRight, FiEye, FiFileText, FiFlag
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { toast } from "sonner";
+import CustomSelect from "@/src/components/ui/CustomSelect";
 
 type Report = { _id: string; post?: { _id?: string; postIdFormatted?: string; title?: string; content?: string; postType?: string; thumbnail?: string; postedTimeAgo?: string }; author?: { name?: string; email?: string; role?: string }; reporter?: { name?: string; email?: string; rank?: string }; reason?: { category?: string; categoryLabel?: string; details?: string }; status?: string; statusLabel?: string; actionTaken?: string; adminNote?: string };
 type ApiResponse = { data?: { items?: Report[]; meta?: { total?: number; totalPages?: number } } | Report[]; items?: Report[]; meta?: { total?: number; totalPages?: number } };
@@ -129,8 +130,35 @@ export default function Moderations() {
     <div><h1 className="text-2xl font-bold text-slate-900">Post Moderation Queue</h1><p className="mt-1 text-sm text-slate-500">Review flagged community content and take moderation actions.</p></div>
     <form onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(searchInput.trim()); }} className="grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-[minmax(220px,1fr)_180px_210px_auto]">
       <label className="relative"><FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search post, author, or reporter" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[#00663f]" /></label>
-      <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm"><option value="">All statuses</option><option value="PENDING">Pending</option><option value="CRITICAL">Critical</option><option value="LOW_PRIORITY">Low priority</option><option value="RESOLVED">Resolved</option><option value="DISMISSED">Dismissed</option></select>
-      <select value={reason} onChange={(event) => { setReason(event.target.value); setPage(1); }} className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm"><option value="">All reasons</option><option value="INAPPROPRIATE">Inappropriate</option><option value="SPAM">Spam</option><option value="MISCATEGORIZED">Miscategorized</option><option value="HARASSMENT">Harassment</option><option value="COPYRIGHT">Copyright</option><option value="OTHER">Other</option></select>
+      <CustomSelect
+        value={status}
+        onChange={(val) => { setStatus(val); setPage(1); }}
+        placeholder="All statuses"
+        options={[
+          { value: "", label: "All statuses" },
+          { value: "PENDING", label: "Pending" },
+          { value: "CRITICAL", label: "Critical" },
+          { value: "LOW_PRIORITY", label: "Low priority" },
+          { value: "RESOLVED", label: "Resolved" },
+          { value: "DISMISSED", label: "Dismissed" },
+        ]}
+        className="min-w-[160px]"
+      />
+      <CustomSelect
+        value={reason}
+        onChange={(val) => { setReason(val); setPage(1); }}
+        placeholder="All reasons"
+        options={[
+          { value: "", label: "All reasons" },
+          { value: "INAPPROPRIATE", label: "Inappropriate" },
+          { value: "SPAM", label: "Spam" },
+          { value: "MISCATEGORIZED", label: "Miscategorized" },
+          { value: "HARASSMENT", label: "Harassment" },
+          { value: "COPYRIGHT", label: "Copyright" },
+          { value: "OTHER", label: "Other" },
+        ]}
+        className="min-w-[180px]"
+      />
       <button type="submit" className="flex items-center justify-center gap-2 rounded-xl bg-[#00663f] px-4 py-2.5 text-sm font-semibold text-white"><FiSearch /> Search</button>
     </form>
     {loading ? <div className="flex justify-center rounded-2xl bg-white p-12 text-[#00663f]"><FiLoader className="animate-spin text-xl" /></div> : error ? <div className="rounded-2xl bg-red-50 p-5 text-sm text-red-700">{error}</div> : reports.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-sm text-slate-500">No reports found.</div> : <div className="overflow-hidden rounded-2xl bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead><tr className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-400"><th className="px-5 py-3">Post</th><th className="px-5 py-3">Author / Reporter</th><th className="px-5 py-3">Reason</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Actions</th></tr></thead><tbody>{reports.map((report) => <tr key={report._id} className="border-b border-slate-50 align-top last:border-0"><td className="px-5 py-4"><div className="flex gap-3"><div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-slate-100">{report.post?.thumbnail ? <Image src={report.post.thumbnail} alt={report.post.title || "Reported post"} fill className="object-cover" /> : <div className="grid h-full place-items-center text-slate-400"><FiFileText /></div>}</div><div><p className="max-w-xs truncate font-semibold text-slate-800">{report.post?.title || report.post?.content || "Reported post"}</p><p className="mt-1 text-xs text-slate-400">{report.post?.postIdFormatted || report.post?._id} · {report.post?.postedTimeAgo}</p><span className="mt-2 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">{report.post?.postType || "POST"}</span></div></div></td><td className="px-5 py-4"><p className="flex items-center gap-1.5 font-medium"><FiUser />{report.author?.name || "Unknown author"}</p><p className="text-xs text-slate-400">{report.author?.email}</p><p className="mt-3 flex items-center gap-1.5 font-medium text-[#c0524d]"><FiFlag />{report.reporter?.name || "Unknown reporter"}</p><p className="text-xs text-slate-400">{report.reporter?.rank || report.reporter?.email}</p></td><td className="px-5 py-4"><span className="rounded-full bg-[#fbe2e2] px-2.5 py-1 text-[10px] font-semibold text-[#c0524d]">{report.reason?.categoryLabel || report.reason?.category || "OTHER"}</span><p className="mt-2 max-w-xs text-sm text-slate-500">{report.reason?.details || "No details provided."}</p></td><td className="px-5 py-4 font-semibold text-[#b17a3a]">{report.statusLabel || statusName(report.status)}</td><td className="px-5 py-4"><button type="button" onClick={() => void openDetails(report._id)} className="flex items-center gap-1.5 font-semibold text-[#00663f]"><FiEye /> View</button><div className="mt-3 flex gap-2"><button type="button" disabled={Boolean(actionLoading)} onClick={() => void executeAction(report, "REMOVE_POST")} className="rounded-lg bg-red-50 p-2 text-red-600 disabled:opacity-50"><FiTrash2 /></button><button type="button" disabled={Boolean(actionLoading)} onClick={() => void executeAction(report, "DISMISSED")} className="rounded-lg bg-slate-100 p-2 text-slate-600 disabled:opacity-50"><FiCheckCircle /></button></div></td></tr>)}</tbody></table></div><div className="flex items-center justify-between border-t border-slate-100 px-5 py-4 text-sm text-slate-500"><span>Showing {(page - 1) * 10 + 1} to {(page - 1) * 10 + reports.length} of {total}</span><div className="flex items-center gap-2"><button type="button" disabled={page === 1} onClick={() => setPage((current) => current - 1)} className="rounded-lg border p-2 disabled:opacity-40"><FiChevronLeft /></button><span>Page {page} of {totalPages}</span><button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="rounded-lg border p-2 disabled:opacity-40"><FiChevronRight /></button></div></div></div>}

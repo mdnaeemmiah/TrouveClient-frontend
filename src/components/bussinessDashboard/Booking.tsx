@@ -1,8 +1,8 @@
 ﻿"use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
-import { FiClock, FiTrendingUp } from "react-icons/fi";
-import { Calendar, CheckCircle2, XCircle } from "lucide-react";
+import { FiCalendar, FiClock, FiMail, FiTag, FiUser } from "react-icons/fi";
 import { toast } from "sonner";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
@@ -20,10 +20,6 @@ type ApiBooking = {
   createdAt: string;
 };
 
-function getInitials(name: string) {
-  return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
-}
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
@@ -32,28 +28,24 @@ function formatTime(iso: string) {
 }
 
 const TAB_LABELS: Record<Tab, string> = {
-  PENDING: "Pending Requests",
+  PENDING: "Pending",
   CONFIRMED: "Confirmed",
   CANCELLED: "Cancelled",
 };
 
-const AVATAR_COLORS = [
-  { bg: "bg-[#e4f3ec]", text: "text-[#00663f]" },
-  { bg: "bg-[#e5ecfb]", text: "text-[#4a5fa5]" },
-  { bg: "bg-[#fdf1e2]", text: "text-[#b17a3a]" },
-  { bg: "bg-[#fce8e8]", text: "text-[#a53a3a]" },
-];
+const STATUS_STYLE: Record<BookingStatus, string> = {
+  PENDING:   "bg-amber-50 text-amber-600 ring-1 ring-amber-200",
+  CONFIRMED: "bg-[#e4f3ec] text-[#00663f] ring-1 ring-[#00663f]/20",
+  CANCELLED: "bg-red-50 text-red-500 ring-1 ring-red-200",
+};
 
-function avatarColor(index: number) {
-  return AVATAR_COLORS[index % AVATAR_COLORS.length];
-}
-
-const forecastBars = [30, 42, 38, 55, 62, 90, 50];
 const peakHours = [
-  { time: "19:00 - 21:00", label: "High Demand", dot: "bg-[#00663f]", text: "text-slate-800" },
-  { time: "12:00 - 14:00", label: "Moderate", dot: "bg-[#d99a3d]", text: "text-slate-500" },
-  { time: "15:00 - 17:00", label: "Low Traffic", dot: "bg-slate-300", text: "text-slate-400" },
+  { time: "19:00 – 21:00", label: "High Demand", dot: "bg-[#00663f]", text: "text-slate-800" },
+  { time: "12:00 – 14:00", label: "Moderate",    dot: "bg-[#d99a3d]", text: "text-slate-500" },
+  { time: "15:00 – 17:00", label: "Low Traffic",  dot: "bg-slate-300",  text: "text-slate-400" },
 ];
+
+const tabs: Tab[] = ["PENDING", "CONFIRMED", "CANCELLED"];
 
 export default function Booking() {
   const [activeTab, setActiveTab] = useState<Tab>("PENDING");
@@ -65,7 +57,7 @@ export default function Booking() {
       setIsLoading(true);
       try {
         const res = await baseApi.get<{ data: ApiBooking[] }>(ENDPOINTS.bookingRequests);
-        const data = res.data?.data ?? (Array.isArray(res.data) ? res.data as ApiBooking[] : []);
+        const data = res.data?.data ?? (Array.isArray(res.data) ? (res.data as ApiBooking[]) : []);
         setBookings(data);
       } catch {
         toast.error("Failed to load booking requests.");
@@ -77,19 +69,20 @@ export default function Booking() {
   }, []);
 
   const filtered = bookings.filter((b) => b.status === activeTab);
-  const tabs: Tab[] = ["PENDING", "CONFIRMED", "CANCELLED"];
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Booking Requests</h1>
         <p className="mt-1 text-sm text-slate-500">Review and respond to incoming customer bookings.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* ── Left: Tabs + Cards ── */}
         <div className="lg:col-span-2">
           {/* Tabs */}
-          <div className="flex items-center gap-6 border-b border-slate-200">
+          <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1">
             {tabs.map((tab) => {
               const count = bookings.filter((b) => b.status === tab).length;
               return (
@@ -97,109 +90,113 @@ export default function Booking() {
                   key={tab}
                   type="button"
                   onClick={() => setActiveTab(tab)}
-                  className={`relative pb-3 text-sm font-semibold transition-colors ${
-                    activeTab === tab ? "text-[#00663f]" : "text-slate-400 hover:text-slate-600"
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-all ${
+                    activeTab === tab
+                      ? "bg-white text-[#00663f] shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
                   }`}
                 >
-                  {TAB_LABELS[tab]}{tab === "PENDING" && count > 0 ? ` (${count})` : ""}
-                  {activeTab === tab && (
-                    <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[#00663f]" />
+                  {TAB_LABELS[tab]}
+                  {count > 0 && (
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      tab === "PENDING" ? "bg-amber-100 text-amber-600" :
+                      tab === "CONFIRMED" ? "bg-[#e4f3ec] text-[#00663f]" :
+                      "bg-red-100 text-red-500"
+                    }`}>
+                      {count}
+                    </span>
                   )}
                 </button>
               );
             })}
           </div>
 
-          {/* List */}
+          {/* Cards */}
           <div className="mt-4 space-y-4">
             {isLoading ? (
-              <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+              <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
                 <p className="text-sm text-slate-400">Loading bookings...</p>
               </div>
             ) : filtered.length === 0 ? (
-              <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-10 text-center shadow-sm">
                 <p className="text-sm text-slate-400">No {TAB_LABELS[activeTab].toLowerCase()} bookings yet.</p>
               </div>
             ) : (
-              filtered.map((booking, index) => {
-                const color = avatarColor(index);
-                const initials = getInitials(booking.customerId.fullName);
-                return (
-                  <div key={booking._id} className="rounded-2xl bg-white p-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-3">
+              filtered.map((booking) => (
+                <div key={booking._id} className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                  {/* Top stripe per status */}
+                  <div className={`h-1 w-full ${
+                    booking.status === "PENDING" ? "bg-amber-400" :
+                    booking.status === "CONFIRMED" ? "bg-[#00663f]" : "bg-red-400"
+                  }`} />
+
+                  <div className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      {/* Business logo + info */}
                       <div className="flex items-center gap-3">
-                        <span
-                          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${color.bg} ${color.text}`}
-                        >
-                          {initials}
-                        </span>
+                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[#e4f3ec]">
+                          {booking.businessId.logo ? (
+                            <Image
+                              src={booking.businessId.logo}
+                              alt={booking.businessId.name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <span className="grid h-full place-items-center text-lg font-bold text-[#00663f]">
+                              {booking.businessId.name.charAt(0)}
+                            </span>
+                          )}
+                        </div>
                         <div>
-                          <p className="text-sm font-semibold text-slate-900">{booking.customerId.fullName}</p>
-                          <p className="text-xs text-slate-400">{booking.customerId.email}</p>
-                          <p className="text-xs font-medium text-[#00663f]">{booking.serviceName}</p>
+                          <p className="text-sm font-bold text-slate-900">{booking.businessId.name}</p>
+                          <span className={`mt-0.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${STATUS_STYLE[booking.status]}`}>
+                            {booking.status}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-1 text-sm font-semibold text-slate-800">
-                          <Calendar size={13} className="text-slate-400" />
+
+                      {/* Date & time */}
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <div className="flex items-center gap-1 text-xs font-semibold text-slate-700">
+                          <FiCalendar className="text-slate-400" />
                           {formatDate(booking.dateTime)}
                         </div>
-                        <p className="text-xs text-slate-400">{formatTime(booking.dateTime)}</p>
-                        <span className={`mt-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                          booking.status === "PENDING" ? "bg-amber-50 text-amber-600" :
-                          booking.status === "CONFIRMED" ? "bg-[#e4f3ec] text-[#00663f]" :
-                          "bg-red-50 text-red-500"
-                        }`}>
-                          {booking.status}
-                        </span>
+                        <div className="flex items-center gap-1 text-xs text-slate-400">
+                          <FiClock />
+                          {formatTime(booking.dateTime)}
+                        </div>
                       </div>
                     </div>
 
-                    {booking.status === "PENDING" && (
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          type="button"
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#00663f] py-2 text-[13px] font-bold text-white hover:bg-[#00552f]"
-                        >
-                          <CheckCircle2 size={14} /> Confirm
-                        </button>
-                        <button
-                          type="button"
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-red-200 py-2 text-[13px] font-bold text-red-500 hover:bg-red-50"
-                        >
-                          <XCircle size={14} /> Decline
-                        </button>
+                    {/* Divider */}
+                    <div className="my-4 border-t border-slate-100" />
+
+                    {/* Customer + service */}
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <FiUser className="shrink-0 text-[#00663f]" />
+                        <span className="font-semibold">{booking.customerId.fullName}</span>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <FiMail className="shrink-0 text-slate-400" />
+                        <span className="truncate">{booking.customerId.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-600">
+                        <FiTag className="shrink-0 text-[#00663f]" />
+                        <span className="font-semibold text-[#00663f]">{booking.serviceName}</span>
+                      </div>
+                    </div>
                   </div>
-                );
-              })
+                </div>
+              ))
             )}
           </div>
         </div>
 
-        {/* Sidebar */}
+        {/* ── Sidebar ── */}
         <div className="space-y-4">
-          <div className="rounded-2xl bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Weekly Forecast</p>
-              <FiTrendingUp className="text-[15px] text-[#00663f]" />
-            </div>
-            <p className="mt-2 text-2xl font-bold text-slate-900">€4,280.00</p>
-            <p className="mt-0.5 flex items-center gap-1 text-xs font-medium text-[#00663f]">
-              <FiTrendingUp className="text-[12px]" /> +12% from last week
-            </p>
-            <div className="mt-4 flex h-20 items-end gap-1.5">
-              {forecastBars.map((height, index) => (
-                <div
-                  key={index}
-                  className={`flex-1 rounded-t-[3px] ${index === forecastBars.length - 2 ? "bg-[#00663f]" : "bg-[#00663f]/25"}`}
-                  style={{ height: `${height}%` }}
-                />
-              ))}
-            </div>
-          </div>
-
+          {/* Peak Hours */}
           <div className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Peak Hours</p>
@@ -218,13 +215,16 @@ export default function Booking() {
             </div>
           </div>
 
+          {/* Summary */}
           <div className="rounded-2xl bg-white p-5 shadow-sm">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Summary</p>
             <div className="mt-3 space-y-2">
               {tabs.map((tab) => (
                 <div key={tab} className="flex items-center justify-between text-sm">
                   <span className="text-slate-500">{TAB_LABELS[tab]}</span>
-                  <span className="font-bold text-slate-800">{bookings.filter((b) => b.status === tab).length}</span>
+                  <span className="font-bold text-slate-800">
+                    {bookings.filter((b) => b.status === tab).length}
+                  </span>
                 </div>
               ))}
             </div>

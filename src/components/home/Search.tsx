@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
+import CustomSelect from "@/src/components/ui/CustomSelect";
 
 type Result = {
   _id: string;
@@ -159,6 +160,11 @@ export default function Search() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
+  // Filter states
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [sortBy, setSortBy] = useState("relevant");
+
   useEffect(() => {
     baseApi.get(ENDPOINTS.categories)
       .then((response) => {
@@ -290,21 +296,34 @@ export default function Search() {
 
           <div className="mt-4">
             <label className="text-[13px] font-semibold text-[#1c1d22]">Category</label>
-            <select disabled={isLoadingCategories} className="mt-1.5 w-full rounded-xl border border-[#e1e3e6] px-3 py-2.5 text-[13px] text-[#3a3d40] outline-none focus:border-[#00663f] disabled:opacity-60">
-              <option>{isLoadingCategories ? "Loading categories..." : "All categories"}</option>
-              {categories.map((category) => <option key={category._id || category.name} value={category._id}>{category.name || category.title || "Unnamed category"}</option>)}
-            </select>
+            <CustomSelect
+              disabled={isLoadingCategories}
+              placeholder={isLoadingCategories ? "Loading categories..." : "All categories"}
+              value={selectedCategory}
+              options={[
+                { value: "", label: "All categories" },
+                ...categories.map((cat) => ({ value: cat._id ?? cat.name ?? "", label: cat.name || cat.title || "Unnamed category" })),
+              ]}
+              onChange={setSelectedCategory}
+              className="mt-1.5"
+            />
           </div>
 
           <div className="mt-4">
             <label className="text-[13px] font-semibold text-[#1c1d22]">City</label>
-            <select className="mt-1.5 w-full rounded-xl border border-[#e1e3e6] px-3 py-2.5 text-[13px] text-[#3a3d40] outline-none focus:border-[#00663f]">
-              <option>All cities</option>
-              <option>Paris</option>
-              <option>Lyon</option>
-              <option>Marseille</option>
-              <option>Nice</option>
-            </select>
+            <CustomSelect
+              value={selectedCity}
+              onChange={setSelectedCity}
+              placeholder="All cities"
+              options={[
+                { value: "", label: "All cities" },
+                { value: "paris", label: "Paris" },
+                { value: "lyon", label: "Lyon" },
+                { value: "marseille", label: "Marseille" },
+                { value: "nice", label: "Nice" },
+              ]}
+              className="mt-1.5"
+            />
           </div>
 
           <div className="mt-4">
@@ -327,11 +346,17 @@ export default function Search() {
 
           <div className="mt-4">
             <label className="text-[13px] font-semibold text-[#1c1d22]">Sort by</label>
-            <select className="mt-1.5 w-full rounded-xl border border-[#e1e3e6] px-3 py-2.5 text-[13px] text-[#3a3d40] outline-none focus:border-[#00663f]">
-              <option>Most relevant</option>
-              <option>Highest rated</option>
-              <option>Most reviewed</option>
-            </select>
+            <CustomSelect
+              value={sortBy}
+              onChange={setSortBy}
+              placeholder="Most relevant"
+              options={[
+                { value: "relevant", label: "Most relevant" },
+                { value: "rated", label: "Highest rated" },
+                { value: "reviewed", label: "Most reviewed" },
+              ]}
+              className="mt-1.5"
+            />
           </div>
 
           <button

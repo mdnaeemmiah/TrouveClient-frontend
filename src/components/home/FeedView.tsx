@@ -91,6 +91,25 @@ function getBusinessId(value: unknown): string | undefined {
   return undefined;
 }
 
+function extractViewsCount(payload: unknown): number | undefined {
+  const response = payload as {
+    data?: {
+      viewsCount?: number;
+      post?: { viewsCount?: number };
+    };
+    viewsCount?: number;
+    post?: { viewsCount?: number };
+  };
+
+  const viewsCount =
+    response.data?.viewsCount ??
+    response.data?.post?.viewsCount ??
+    response.viewsCount ??
+    response.post?.viewsCount;
+
+  return typeof viewsCount === "number" ? viewsCount : undefined;
+}
+
 export default function FeedView() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] =
@@ -107,6 +126,9 @@ export default function FeedView() {
   const [followedBusinesses, setFollowedBusinesses] = useState<
     Record<string, boolean>
   >(() => getStoredFollowMap());
+
+  const [viewedPosts, setViewedPosts] = useState<Set<string>>(new Set());
+  const viewedPostsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setFollowedBusinesses(getStoredFollowMap());
@@ -149,7 +171,12 @@ export default function FeedView() {
   const observerTarget = useRef<HTMLDivElement | null>(null);
   const isFetchingRef = useRef(false);
   const pageRef = useRef(page);
-  pageRef.current = page;
+
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  const postViewObserverRef = useRef<IntersectionObserver | null>(null);
 
   const loadPosts = useCallback(
     async (nextPage = 1, append = false, targetTab?: (typeof tabs)[number]) => {
@@ -265,6 +292,80 @@ export default function FeedView() {
       observer.disconnect();
     };
   }, [hasMore, isLoading, isLoadingMore, loadPosts]);
+
+  const trackPostView = useCallback((postId: string) => {
+    if (viewedPostsRef.current.has(postId)) {
+      return;
+    }
+
+    viewedPostsRef.current.add(postId);
+    setViewedPosts((current) => {
+      const next = new Set(current);
+      next.add(postId);
+      return next;
+    });
+
+    baseApi
+      .post(ENDPOINTS.countView(postId), {})
+      .then(() =>
+        baseApi
+          .get(ENDPOINTS.getView(postId))
+          .then((response) => {
+            const viewsCount = extractViewsCount(response.data);
+
+            if (typeof viewsCount === "number") {
+              setPosts((current) =>
+                current.map((post) =>
+                  post._id === postId
+                    ? { ...post, viewsCount }
+                    : post,
+                ),
+              );
+            }
+          })
+          .catch(() => {
+            // The POST already counted the view.
+          }),
+      )
+      .catch(() => {
+        viewedPostsRef.current.delete(postId);
+        setViewedPosts((current) => {
+          const next = new Set(current);
+          next.delete(postId);
+          return next;
+        });
+      });
+  }, []);
+
+  useEffect(() => {
+    postViewObserverRef.current?.disconnect();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.5) {
+            return;
+          }
+
+          const postId = entry.target.getAttribute("data-post-id");
+          if (postId) {
+            trackPostView(postId);
+          }
+        });
+      },
+      { root: null, threshold: 0.5 },
+    );
+
+    postViewObserverRef.current = observer;
+    document.querySelectorAll("[data-post-id]").forEach((element) => {
+      observer.observe(element);
+    });
+
+    return () => {
+      observer.disconnect();
+      postViewObserverRef.current = null;
+    };
+  }, [posts, trackPostView]);
 
   const likePost = async (post: FeedPost) => {
     const wasLiked = likedPosts[post._id] || false;
@@ -494,6 +595,7 @@ export default function FeedView() {
                 return (
                   <article
                     key={post._id}
+                    data-post-id={post._id}
                     className="rounded-2xl border border-[#eef0f1] bg-white p-5"
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -570,7 +672,9 @@ export default function FeedView() {
                         {post.likeCount || 0}
                       </button>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-slate-500">
+                        <span
+                          className={`text-xs ${viewedPosts.has(post._id) ? "font-semibold text-[#00663f]" : "text-slate-500"}`}
+                        >
                           {post.viewsCount || 0} views
                         </span>
                         <button

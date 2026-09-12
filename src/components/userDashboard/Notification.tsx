@@ -150,7 +150,7 @@ export default function Notification() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl pb-12">
+    <div className=" pb-12">
       {/* Header */}
       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div>

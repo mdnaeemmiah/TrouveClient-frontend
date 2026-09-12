@@ -259,15 +259,15 @@ export default async function BusinessDetailPage({
               <div className="mt-4 flex items-center justify-between">
                 <span className="text-[12px] text-[#5c6168]">Social Networks</span>
                 <div className="flex gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eceef0] text-[#3a3d40]">
+                  <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eceef0] text-[#3a3d40] hover:bg-[#1877f2] hover:text-white transition-colors">
                     <FaFacebookF size={13} />
-                  </span>
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eceef0] text-[#3a3d40]">
+                  </a>
+                  <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eceef0] text-[#3a3d40] hover:bg-gradient-to-tr hover:from-[#f9ce34] hover:via-[#ee2a7b] hover:to-[#6228d7] hover:text-white transition-colors">
                     <FaInstagram size={13} />
-                  </span>
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eceef0] text-[#3a3d40]">
+                  </a>
+                  <a href="#" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="flex h-7 w-7 items-center justify-center rounded-full bg-[#eceef0] text-[#3a3d40] hover:bg-[#ff0000] hover:text-white transition-colors">
                     <FaYoutube size={13} />
-                  </span>
+                  </a>
                 </div>
               </div>
             </div>

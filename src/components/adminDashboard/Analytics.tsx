@@ -84,15 +84,25 @@ const fallbackWeeklyViews = [55, 70, 88, 62, 78, 42, 30];
 const fallbackWeeklyActions = [35, 50, 64, 46, 55, 30, 48];
 
 type AnalyticsData = {
+  timeframe?: string;
   stats?: {
-    monthlyGrowth?: { count?: number; growthBadge?: string };
-    activeBusinesses?: { count?: number; badge?: string };
-    userEngagement?: { formatted?: string; growthBadge?: string };
-    platformInquiries?: { count?: number; growthBadge?: string };
+    monthlyGrowth?: { count?: number; growthPercentage?: number; growthBadge?: string };
+    activeBusinesses?: { count?: number; newCount?: number; badge?: string };
+    userEngagement?: { count?: number; formatted?: string; growthCount?: number; growthBadge?: string };
+    platformInquiries?: { count?: number; growthPercentage?: number; growthBadge?: string };
   };
-  growthTimeline?: { month: string; total: number }[];
-  categoryDistribution?: { totalBusinesses?: number; categories?: { name: string; percentage: number; color: string }[] };
-  weeklyEngagement?: { day: string; views: number; actions: number }[];
+  growthTimeline?: { month: string; fullDate: string; users: number; businesses: number; total: number }[];
+  categoryDistribution?: { 
+    totalBusinesses?: number; 
+    categories?: { 
+      categoryId: string; 
+      name: string; 
+      count: number; 
+      percentage: number; 
+      color: string 
+    }[] 
+  };
+  weeklyEngagement?: { day: string; date: string; views: number; actions: number }[];
 };
 
 type Transaction = {
@@ -150,11 +160,20 @@ export default function Analytics() {
 
   useEffect(() => {
     let isMounted = true;
+    console.log(`🔄 Fetching analytics data for timeframe: ${timeframeByRange[range]}`);
+    console.log(`📡 API URL: ${ENDPOINTS.adminAnalytics}`);
+    
     baseApi.get(ENDPOINTS.adminAnalytics, { params: { timeframe: timeframeByRange[range] } })
       .then((response) => {
-        if (isMounted) setAnalytics(response.data?.data ?? response.data);
+        console.log(`✅ Analytics API Response:`, response.data);
+        const data = response.data?.data ?? response.data;
+        console.log(`📊 Processed Analytics Data:`, data);
+        if (isMounted) setAnalytics(data);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error(`❌ Analytics API Error:`, error);
+        console.error('Error details:', error.response?.data);
+        console.error('Error status:', error.response?.status);
         if (isMounted) setAnalytics(null);
       })
     return () => { isMounted = false; };
@@ -171,7 +190,13 @@ export default function Analytics() {
   const growthPoints = buildPoints(growthValues);
   const growthLinePath = buildSmoothPath(growthPoints);
   const growthAreaPath = growthPoints.length ? `${growthLinePath} L ${growthPoints[growthPoints.length - 1].x} ${CHART_BASELINE} L ${growthPoints[0].x} ${CHART_BASELINE} Z` : "";
-  const categories: CategorySlice[] = analytics?.categoryDistribution?.categories?.map((category) => ({ label: category.name, pct: category.percentage, color: category.color })) ?? fallbackCategories;
+  const categories: CategorySlice[] = analytics?.categoryDistribution?.categories?.map((category) => ({ 
+    label: category.name, 
+    pct: category.percentage, 
+    color: category.color 
+  })) ?? fallbackCategories;
+  
+  const totalBusinesses = analytics?.categoryDistribution?.totalBusinesses ?? 1200;
   const donutSlices = categories.map((slice, index) => {
     const cumulative = categories.slice(0, index).reduce((sum, item) => sum + (item.pct / 100) * DONUT_CIRCUMFERENCE, 0);
     const length = (slice.pct / 100) * DONUT_CIRCUMFERENCE;
@@ -185,10 +210,15 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6">
+      {/* Remove DEBUG section for clean UI */}
+      {/* DEBUG Section removed for production look */}
+
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Analytics Overview</h1>
-          <p className="mt-1 text-sm text-slate-500">Real-time performance data for the Motor Bridge platform.</p>
+          <h1 className="text-3xl font-bold text-slate-900">Analytics Dashboard</h1>
+          <p className="mt-2 text-base text-slate-600">
+            Comprehensive platform insights and performance metrics
+          </p>
         </div>
 
         <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
@@ -207,41 +237,54 @@ export default function Analytics() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={stat.label} className="rounded-2xl bg-white p-5 shadow-sm">
+            <div key={stat.label} className="group relative rounded-2xl bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm border border-slate-100 hover:shadow-lg transition-all duration-300">
               <div className="flex items-start justify-between">
-                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.iconBg}`}>
-                  <Icon className={`text-[18px] ${stat.iconColor}`} />
-                </span>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${stat.badgeBg} ${stat.badgeColor}`}>
+                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.iconBg} group-hover:scale-110 transition-transform duration-300`}>
+                  <Icon className={`text-[20px] ${stat.iconColor}`} />
+                </div>
+                <span className={`rounded-full px-3 py-1.5 text-xs font-bold ${stat.badgeBg} ${stat.badgeColor} shadow-sm`}>
                   {stat.badge}
                 </span>
               </div>
-              <p className="mt-4 text-sm text-slate-500">{stat.label}</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stat.value}</p>
+              <div className="mt-5">
+                <p className="text-sm font-medium text-slate-500 uppercase tracking-wide">{stat.label}</p>
+                <p className="mt-2 text-3xl font-bold text-slate-900">{stat.value}</p>
+              </div>
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#00663f]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
           );
         })}
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <div className="rounded-2xl bg-white p-5 shadow-sm xl:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900">User &amp; Business Growth</h2>
+        <div className="rounded-2xl bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm border border-slate-100 xl:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Growth Timeline</h2>
+              <p className="text-sm text-slate-500 mt-1">Monthly user and business growth trends</p>
+            </div>
             <button type="button" className="text-slate-400 transition-colors hover:text-slate-600">
-              <FiMoreVertical className="text-[16px]" />
+              <FiMoreVertical className="text-[18px]" />
             </button>
           </div>
 
-          <svg viewBox={`0 0 ${CHART_WIDTH} 200`} className="mt-4 w-full overflow-visible">
+          <svg viewBox={`0 0 ${CHART_WIDTH} 200`} className="mt-2 w-full overflow-visible">
             <defs>
               <linearGradient id="growth-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#00663f" stopOpacity="0.16" />
-                <stop offset="100%" stopColor="#00663f" stopOpacity="0" />
+                <stop offset="0%" stopColor="#00663f" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#00663f" stopOpacity="0.02" />
               </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge> 
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
             </defs>
 
             {[0, 1, 2].map((step) => (
@@ -251,32 +294,44 @@ export default function Analytics() {
                 x2={CHART_WIDTH}
                 y1={CHART_TOP + step * ((CHART_BASELINE - CHART_TOP) / 2)}
                 y2={CHART_TOP + step * ((CHART_BASELINE - CHART_TOP) / 2)}
-                stroke="#e1e0d9"
+                stroke="#f1f5f9"
                 strokeWidth={1}
+                strokeDasharray="2,4"
               />
             ))}
 
             <path d={growthAreaPath} fill="url(#growth-fill)" />
-            <path d={growthLinePath} fill="none" stroke="#00663f" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            <path 
+              d={growthLinePath} 
+              fill="none" 
+              stroke="#00663f" 
+              strokeWidth={3} 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              filter="url(#glow)"
+            />
 
             {growthPoints.map((point, index) => (
               <g key={growthMonths[index]} className="group cursor-pointer">
-                <circle cx={point.x} cy={point.y} r={16} fill="transparent" />
+                <circle cx={point.x} cy={point.y} r={20} fill="transparent" />
                 <circle
                   cx={point.x}
                   cy={point.y}
-                  r={4}
+                  r={5}
                   fill="#00663f"
                   stroke="#ffffff"
-                  strokeWidth={2}
-                  className="opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                  strokeWidth={3}
+                  className="opacity-0 transition-all duration-200 group-hover:opacity-100 group-hover:r-6"
                 />
                 <g
-                  className="opacity-0 transition-opacity duration-150 group-hover:opacity-100"
-                  transform={`translate(${Math.min(Math.max(point.x, 30), CHART_WIDTH - 30)}, ${Math.max(point.y - 34, 10)})`}
+                  className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                  transform={`translate(${Math.min(Math.max(point.x, 40), CHART_WIDTH - 40)}, ${Math.max(point.y - 40, 15)})`}
                 >
-                  <rect x={-26} y={-16} width={52} height={24} rx={6} fill="#0b0b0b" />
-                  <text x={0} y={0} textAnchor="middle" fontSize={11} fontWeight={600} fill="#ffffff">
+                  <rect x={-35} y={-20} width={70} height={32} rx={8} fill="#1e293b" />
+                  <text x={0} y={-8} textAnchor="middle" fontSize={11} fontWeight={600} fill="#ffffff">
+                    {growthMonths[index]}
+                  </text>
+                  <text x={0} y={6} textAnchor="middle" fontSize={13} fontWeight={700} fill="#10b981">
                     {growthValues[index]}
                   </text>
                 </g>
@@ -287,10 +342,11 @@ export default function Analytics() {
               <text
                 key={month}
                 x={growthPoints[index].x}
-                y={195}
+                y={190}
                 textAnchor="middle"
-                fontSize={11}
-                fill="#898781"
+                fontSize={12}
+                fontWeight={500}
+                fill="#64748b"
               >
                 {month}
               </text>
@@ -298,13 +354,18 @@ export default function Analytics() {
           </svg>
         </div>
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-900">Category Dist.</h2>
+        <div className="rounded-2xl bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Category Distribution</h2>
+              <p className="text-sm text-slate-500 mt-1">Business categories breakdown</p>
+            </div>
+          </div>
 
-          <div className="relative mx-auto mt-4 h-[180px] w-[180px]">
+          <div className="relative mx-auto mt-2 h-[200px] w-[200px]">
             <svg viewBox="0 0 200 200" className="h-full w-full -rotate-90">
-              <circle cx={100} cy={100} r={DONUT_R} fill="none" stroke="#f1f0ec" strokeWidth={22} />
-              {donutSlices.map((slice) => (
+              <circle cx={100} cy={100} r={DONUT_R} fill="none" stroke="#f8fafc" strokeWidth={24} />
+              {donutSlices.map((slice, index) => (
                 <circle
                   key={slice.label}
                   cx={100}
@@ -312,10 +373,13 @@ export default function Analytics() {
                   r={DONUT_R}
                   fill="none"
                   stroke={slice.color}
-                  strokeWidth={22}
+                  strokeWidth={24}
                   strokeDasharray={slice.dasharray}
                   strokeDashoffset={slice.dashoffset}
-                  className="transition-opacity duration-150 hover:opacity-80"
+                  className="transition-all duration-300 hover:opacity-80 hover:stroke-width-26"
+                  style={{
+                    filter: `drop-shadow(0 2px 4px ${slice.color}20)`
+                  }}
                 >
                   <title>
                     {slice.label}: {slice.pct}%
@@ -324,71 +388,81 @@ export default function Analytics() {
               ))}
             </svg>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-              <p className="text-2xl font-bold text-slate-900">1.2k</p>
-              <p className="text-xs text-slate-400">Total</p>
+              <p className="text-3xl font-bold text-slate-900">{totalBusinesses >= 1000 ? `${(totalBusinesses/1000).toFixed(1)}k` : totalBusinesses}</p>
+              <p className="text-sm text-slate-500 font-medium">Total Businesses</p>
             </div>
           </div>
 
-          <ul className="mt-4 space-y-2">
+          <div className="mt-6 space-y-3">
             {categories.map((cat) => (
-              <li key={cat.label} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-slate-600">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
+              <div key={cat.label} className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-slate-50 to-transparent hover:from-slate-100 transition-colors">
+                <span className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <span 
+                    className="h-3 w-3 rounded-full shadow-sm" 
+                    style={{ backgroundColor: cat.color }}
+                  />
                   {cat.label}
                 </span>
-                <span className="font-medium text-slate-800">{cat.pct}%</span>
-              </li>
+                <span className="font-bold text-slate-900 bg-white px-2 py-1 rounded-full text-sm shadow-sm">
+                  {cat.pct}%
+                </span>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <div className="rounded-2xl bg-white p-5 shadow-sm xl:col-span-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900">Weekly Engagement</h2>
-            <div className="flex items-center gap-3 text-xs text-slate-500">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#00663f]" />
+        <div className="rounded-2xl bg-gradient-to-br from-white to-slate-50 p-6 shadow-sm border border-slate-100 xl:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">Weekly Engagement</h2>
+              <p className="text-sm text-slate-500 mt-1">Daily views and user actions</p>
+            </div>
+            <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
+              <span className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-[#00663f] shadow-sm" />
                 Views
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#4fa87d]" />
+              <span className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-[#4fa87d] shadow-sm" />
                 Actions
               </span>
             </div>
           </div>
 
-          <div className="mt-6 flex h-40 items-end justify-between gap-2">
+          <div className="mt-4 flex h-48 items-end justify-between gap-3 p-4 bg-gradient-to-t from-slate-50 to-transparent rounded-xl">
             {weekDays.map((day, index) => (
-              <div key={day} className="flex flex-1 flex-col items-center gap-2">
-                <div className="flex h-32 items-end gap-1">
-                  <div className="group/bar relative flex h-full w-3 items-end">
+              <div key={day} className="flex flex-1 flex-col items-center gap-3">
+                <div className="flex h-40 items-end gap-1.5">
+                  <div className="group/bar relative flex h-full w-4 items-end">
                     <div
-                      className="w-full rounded-t-[4px] bg-[#00663f] transition-opacity group-hover/bar:opacity-80"
+                      className="w-full rounded-t-lg bg-gradient-to-t from-[#00663f] to-[#10b981] transition-all duration-300 group-hover/bar:opacity-80 group-hover/bar:scale-105 shadow-sm"
                       style={{ height: `${(weeklyViews[index] / weeklyMax) * 100}%` }}
                     />
-                    <div className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#0b0b0b] px-2 py-1 text-[10px] font-semibold text-white opacity-0 transition-opacity group-hover/bar:opacity-100">
+                    <div className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white opacity-0 transition-opacity group-hover/bar:opacity-100 shadow-lg">
                       Views: {weeklyViews[index]}
                     </div>
                   </div>
-                  <div className="group/bar relative flex h-full w-3 items-end">
+                  <div className="group/bar relative flex h-full w-4 items-end">
                     <div
-                      className="w-full rounded-t-[4px] bg-[#4fa87d] transition-opacity group-hover/bar:opacity-80"
+                      className="w-full rounded-t-lg bg-gradient-to-t from-[#4fa87d] to-[#6ee7b7] transition-all duration-300 group-hover/bar:opacity-80 group-hover/bar:scale-105 shadow-sm"
                       style={{ height: `${(weeklyActions[index] / weeklyMax) * 100}%` }}
                     />
-                    <div className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#0b0b0b] px-2 py-1 text-[10px] font-semibold text-white opacity-0 transition-opacity group-hover/bar:opacity-100">
+                    <div className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-semibold text-white opacity-0 transition-opacity group-hover/bar:opacity-100 shadow-lg">
                       Actions: {weeklyActions[index]}
                     </div>
                   </div>
                 </div>
-                <span className="text-xs text-slate-400">{day}</span>
+                <span className="text-sm font-medium text-slate-600 bg-white px-2 py-1 rounded-full shadow-sm">
+                  {day}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
+        {/* <div className="rounded-2xl bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">Recent Transactions</h2>
             <button type="button" className="text-sm font-medium text-[#00663f] hover:underline">
@@ -418,7 +492,7 @@ export default function Analytics() {
               );
             })}
           </ul>
-        </div>
+        </div> */}
       </div>
     </div>
   );

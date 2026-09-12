@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FiArrowRight, FiBriefcase, FiLoader, FiMapPin, FiRefreshCw, FiSearch } from "react-icons/fi";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
+import CustomSelect from "@/src/components/ui/CustomSelect";
 
 type Business = {
   _id: string;
@@ -137,12 +138,18 @@ export default function BusinessProfiles() {
           <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Search by name, email, or city" className="w-full rounded-xl border border-slate-200 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-[#00663f]" />
         </label>
-        <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-[#00663f]">
-          <option value="">All statuses</option>
-          <option value="PENDING_APPROVAL">Pending approval</option>
-          <option value="APPROVED">Approved</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
+        <CustomSelect
+          value={status}
+          onChange={(val) => { setStatus(val); setPage(1); }}
+          placeholder="All statuses"
+          options={[
+            { value: "", label: "All statuses" },
+            { value: "PENDING_APPROVAL", label: "Pending approval" },
+            { value: "APPROVED", label: "Approved" },
+            { value: "REJECTED", label: "Rejected" },
+          ]}
+          className="min-w-[180px]"
+        />
         <input value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setPage(1); }} placeholder="Category ID" className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#00663f]" />
         <button type="submit" className="flex items-center justify-center gap-2 rounded-xl bg-[#00663f] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#004f31]"><FiSearch /> Search</button>
       </form>
@@ -192,20 +199,20 @@ export default function BusinessProfiles() {
                     <td className="px-5 py-4 text-slate-500">{getOwnerLabel(business.ownerId)}</td>
                     <td className="px-5 py-4 text-slate-500"><span className="flex items-center gap-1.5"><FiMapPin />{getLocation(business)}</span></td>
                     <td className="px-5 py-4">
-                      <select
+                      <CustomSelect
                         value={business.status || ""}
-                        onChange={(event) => {
-                          const nextStatus = event.target.value as StatusAction;
+                        onChange={(val) => {
+                          const nextStatus = val as StatusAction;
                           if (nextStatus) void updateBusinessStatus(business._id, nextStatus);
                         }}
                         disabled={updatingBusinessId === business._id}
-                        aria-label={`Update status for ${business.name || "business"}`}
-                        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-[#00663f] focus:ring-2 focus:ring-[#00663f]/10 disabled:opacity-60"
-                      >
-                        <option value="" disabled>{business.status || "Select status"}</option>
-                        <option value="APPROVED">Approve</option>
-                        <option value="REJECTED">Reject</option>
-                      </select>
+                        options={[
+                          { value: "", label: business.status || "Select status" },
+                          { value: "APPROVED", label: "Approve" },
+                          { value: "REJECTED", label: "Reject" },
+                        ]}
+                        className="w-36"
+                      />
                     </td>
                     <td className="px-5 py-4"><Link href={`/adminDashboard/businessProfiles/${business._id}`} className="inline-flex items-center gap-1.5 font-semibold text-[#00663f] hover:text-[#004f31]">View <FiArrowRight /></Link></td>
                   </tr>
@@ -220,11 +227,16 @@ export default function BusinessProfiles() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-sm">
           <label className="flex items-center gap-2 text-sm text-slate-500">
             Per page
-            <select value={limit} onChange={(event) => { setLimit(Number(event.target.value)); setPage(1); }} className="rounded-lg border border-slate-200 px-2 py-1.5 text-sm text-slate-700">
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
+            <CustomSelect
+              value={String(limit)}
+              onChange={(val) => { setLimit(Number(val)); setPage(1); }}
+              options={[
+                { value: "10", label: "10" },
+                { value: "25", label: "25" },
+                { value: "50", label: "50" },
+              ]}
+              className="w-20"
+            />
           </label>
           <div className="flex items-center gap-3 text-sm text-slate-500">
             <span>Page {page} of {Math.max(1, totalPages || Math.ceil(total / limit))}</span>

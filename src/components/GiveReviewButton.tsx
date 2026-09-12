@@ -132,13 +132,24 @@ export default function GiveReviewButton({ businessName, businessId }: GiveRevie
 
     setIsSubmitting(true);
     try {
-      await baseApi.post(ENDPOINTS.postReview, {
-        businessId,
-        rating,
-        comment: comment.trim(),
-        recommend,
-      });
-      toast.success(myReviewId ? "Review updated successfully!" : "Review submitted successfully!");
+      if (myReviewId) {
+        // UPDATE existing review via PATCH
+        await baseApi.patch(ENDPOINTS.updateReviews(myReviewId), {
+          rating,
+          comment: comment.trim(),
+          recommend,
+        });
+        toast.success("Review updated successfully!");
+      } else {
+        // CREATE new review
+        await baseApi.post(ENDPOINTS.postReview, {
+          businessId,
+          rating,
+          comment: comment.trim(),
+          recommend,
+        });
+        toast.success("Review submitted successfully!");
+      }
       await loadReviews();
     } catch (error: unknown) {
       const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message;
@@ -282,7 +293,7 @@ export default function GiveReviewButton({ businessName, businessId }: GiveRevie
                   </div>
                 </div>
 
-                {/* <div className="mt-4 flex items-center justify-end gap-3">
+                <div className="mt-4 flex items-center justify-end gap-3">
                   {myReviewId && (
                     <button
                       type="button"
@@ -311,7 +322,7 @@ export default function GiveReviewButton({ businessName, businessId }: GiveRevie
                       "Submit Review"
                     )}
                   </button>
-                </div> */}
+                </div>
               </div>
 
               {/* Customer Reviews Section */}

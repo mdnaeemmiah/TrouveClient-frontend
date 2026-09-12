@@ -7,6 +7,7 @@ import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
 import { useAuth } from "@/src/context/AuthContext";
 import { useProfileTracking } from "@/src/hooks/useProfileTracking";
+import CustomSelect from "@/src/components/ui/CustomSelect";
 
 type FieldVisibility = "REQUIRED" | "OPTIONAL" | "HIDDEN";
 
@@ -215,11 +216,12 @@ export default function BookTableButton({
                     <label className="mb-1.5 block text-[13px] font-semibold text-[#1c1d22]">
                       Number of Guests {req(sf.guestCount) && <span className="text-red-500">*</span>}
                     </label>
-                    <select value={guestCount} onChange={(e) => setGuestCount(e.target.value)} className={inputClass}>
-                      {[1,2,3,4,5,6,7,8].map((n) => (
-                        <option key={n} value={n}>{n} Guest{n > 1 ? "s" : ""}</option>
-                      ))}
-                    </select>
+                    <CustomSelect
+                      value={guestCount}
+                      onChange={setGuestCount}
+                      options={[1,2,3,4,5,6,7,8].map((n) => ({ value: String(n), label: `${n} Guest${n > 1 ? "s" : ""}` }))}
+                      className="mt-1.5 w-full"
+                    />
                   </div>
                 )}
 
@@ -229,16 +231,13 @@ export default function BookTableButton({
                     Service <span className="text-red-500">*</span>
                   </label>
                   {services.length > 0 ? (
-                    <select
+                    <CustomSelect
                       value={serviceName}
-                      onChange={(e) => setServiceName(e.target.value)}
-                      className={inputClass}
-                    >
-                      <option value="">Select a service...</option>
-                      {services.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
+                      onChange={setServiceName}
+                      placeholder="Select a service..."
+                      options={services.map((s) => ({ value: s, label: s }))}
+                      className="mt-1.5 w-full"
+                    />
                   ) : (
                     <input
                       type="text"

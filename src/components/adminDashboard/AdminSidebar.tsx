@@ -13,6 +13,8 @@ import {
   FiSettings,
   FiUsers,
   FiX,
+  FiTag,
+  FiCalendar,
 } from "react-icons/fi";
 import { useAuth } from "@/src/context/AuthContext";
 
@@ -29,6 +31,8 @@ const navItems: NavItem[] = [
   { label: "Moderation", href: "/adminDashboard/moderation", icon: FiAlertTriangle },
   { label: "Trash Archive", href: "/adminDashboard/trash", icon: FiArchive },
   { label: "All Business Profiles", href: "/adminDashboard/pendingApprovals", icon: FiClock },
+  { label: "Categories", href: "/adminDashboard/categories", icon: FiTag },
+  { label: "Booking Templates", href: "/adminDashboard/booking-templates", icon: FiCalendar },
   { label: "Settings", href: "/adminDashboard/settings", icon: FiSettings },
 ];
 

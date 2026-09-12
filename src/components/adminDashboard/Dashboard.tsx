@@ -87,8 +87,15 @@ const today = new Date().toLocaleDateString("en-US", {
 export default function Dashboard() {
   const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [todayStr, setTodayStr] = useState("");
 
   useEffect(() => {
+    setTodayStr(new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }));
     baseApi.get(ENDPOINTS.adminDashboard)
       .then((response) => {
         setDashboard(response.data?.data ?? response.data);

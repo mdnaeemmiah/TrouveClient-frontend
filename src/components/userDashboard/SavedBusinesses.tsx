@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { FiChevronDown, FiHeart, FiStar } from "react-icons/fi";
+import { FiChevronDown, FiBookmark, FiStar } from "react-icons/fi";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
+import CustomSelect from "@/src/components/ui/CustomSelect";
 
 type Category = "All" | "Restaurants" | "Services" | "Shops";
 
@@ -90,6 +91,7 @@ function parseSavedBusinesses(payload: unknown): SavedBusiness[] {
 export default function SavedBusinesses() {
   const [savedBusinesses, setSavedBusinesses] = useState<SavedBusiness[]>([]);
   const [activeCategory, setActiveCategory] = useState<Category>("All");
+  const [sortBy, setSortBy] = useState("recent");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -113,10 +115,21 @@ export default function SavedBusinesses() {
     };
   }, []);
 
-  const filteredBusinesses = useMemo(
-    () => savedBusinesses.filter((business) => activeCategory === "All" || business.category === activeCategory),
-    [savedBusinesses, activeCategory]
-  );
+  const filteredBusinesses = useMemo(() => {
+    let filtered = savedBusinesses.filter(
+      (business) => activeCategory === "All" || business.category === activeCategory
+    );
+
+    // Sort businesses
+    if (sortBy === "rating") {
+      filtered = filtered.sort((a, b) => b.rating - a.rating);
+    } else if (sortBy === "name") {
+      filtered = filtered.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    // "recent" is default order, no sorting needed
+
+    return filtered;
+  }, [savedBusinesses, activeCategory, sortBy]);
 
   const toggleSaveBusiness = async (businessId: string) => {
     const previous = savedBusinesses.some((business) => business.id === businessId);
@@ -147,7 +160,7 @@ export default function SavedBusinesses() {
       </p>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+        {/* <div className="flex flex-wrap items-center gap-2">
           {categories.map((category) => (
             <button
               key={category}
@@ -162,18 +175,20 @@ export default function SavedBusinesses() {
               {category}
             </button>
           ))}
-        </div>
+        </div> */}
 
         <label className="flex items-center gap-2 text-sm text-slate-500">
           Sort by:
-          <span className="relative">
-            <select className="appearance-none rounded-lg border border-transparent bg-transparent py-1 pl-1 pr-6 text-sm font-semibold text-slate-700 outline-none">
-              <option>Recently added</option>
-              <option>Highest rated</option>
-              <option>Name (A-Z)</option>
-            </select>
-            <FiChevronDown className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-[14px] text-slate-400" />
-          </span>
+          <CustomSelect
+            value={sortBy}
+            onChange={setSortBy}
+            options={[
+              { value: "recent", label: "Recently added" },
+              { value: "rating", label: "Highest rated" },
+              { value: "name", label: "Name (A-Z)" },
+            ]}
+            className="w-44"
+          />
         </label>
       </div>
 
@@ -204,7 +219,7 @@ export default function SavedBusinesses() {
                   onClick={() => void toggleSaveBusiness(business.id)}
                   className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-[#00663f] shadow transition-colors hover:bg-white"
                 >
-                  <FiHeart className="text-[15px] fill-current" />
+                  <FiBookmark className="text-[15px] fill-current" />
                 </button>
               </div>
 
