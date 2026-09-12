@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/purity */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -249,10 +250,10 @@ export default function Dashboard() {
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Welcome back, Jean-Pierre</h1>
-          <p className="mt-2 text-base text-slate-600">
+          <h1 className="text-3xl font-bold text-slate-900">Welcome back</h1>
+          {/* <p className="mt-2 text-base text-slate-600">
             Here's how your business <span className="font-semibold text-[#00663f]">'Le Petit Bistro Paris'</span> is performing this week.
-          </p>
+          </p> */}
         </div>
       </div>
 

@@ -330,31 +330,23 @@ export default function Feed() {
        */
       baseApi
         .post(ENDPOINTS.countView(postId), {})
-        .then(() => {
-          return baseApi
-            .get(ENDPOINTS.getView(postId))
-            .then((response) => {
-              const newViewCount = extractViewsCount(
-                response.data,
-              );
+        .then((response) => {
+          const responseViewsCount = extractViewsCount(
+            response.data,
+          );
 
-              if (typeof newViewCount === "number") {
-                setPosts((current) =>
-                  current.map((item) =>
-                    item._id === postId
-                      ? {
-                          ...item,
-                          viewsCount:
-                            newViewCount,
-                        }
-                      : item,
-                  ),
-                );
-              }
-            })
-            .catch(() => {
-              // The POST already counted the view; keep duplicate protection.
-            });
+          setPosts((current) =>
+            current.map((item) =>
+              item._id === postId
+                ? {
+                    ...item,
+                    viewsCount:
+                      responseViewsCount ??
+                      (item.viewsCount || 0) + 1,
+                  }
+                : item,
+            ),
+          );
         })
         .catch(() => {
           viewedPostsRef.current.delete(
@@ -1222,9 +1214,9 @@ export default function Feed() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="rounded-full bg-[#edf7f2] px-3 py-1 text-[11px] font-bold text-[#00663f]">
+                          {/* <span className="rounded-full bg-[#edf7f2] px-3 py-1 text-[11px] font-bold text-[#00663f]">
                             Live
-                          </span>
+                          </span> */}
 
                           <button
                             type="button"

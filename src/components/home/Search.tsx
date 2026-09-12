@@ -26,6 +26,7 @@ type Result = {
   slug: string;
   name: string;
   category: string;
+  categoryId?: string;
   city: string;
   rating: number;
   reviews: number;
@@ -69,13 +70,20 @@ function parseBusinesses(response: BusinessResponse): { results: Result[]; total
   const total = Array.isArray(data) ? businesses.length : data?.total ?? data?.meta?.total ?? businesses.length;
   return {
     results: businesses.map((business) => {
-      const category = business.categoryId as { name?: string } | string | undefined;
+      const category = business.categoryId as
+        | { _id?: string; name?: string }
+        | string
+        | undefined;
       const location = business.location as { city?: string } | undefined;
       return {
         _id: String(business._id || business.slug || business.name),
         slug: String(business.slug || business._id || ""),
         name: String(business.name || "Unnamed business"),
         category: typeof category === "string" ? category : category?.name || "Business",
+        categoryId:
+          typeof category === "string"
+            ? category
+            : category?._id,
         city: location?.city || "Location not provided",
         rating: Number(business.averageRating || 0),
         reviews: Number(business.reviewCount || 0),
@@ -144,10 +152,52 @@ function parseComparisonResponse(payload: unknown): ComparisonData {
 
 const ratingOptions = ["4 stars & up", "3 stars & up", "2 stars & up"];
 
+type AppliedFilters = {
+  category: string;
+  city: string;
+  minRating: string | null;
+  sortBy: string;
+};
+
+function applyResultFilters(
+  results: Result[],
+  filters: AppliedFilters,
+) {
+  const minimumRating = filters.minRating
+    ? Number.parseInt(filters.minRating, 10)
+    : 0;
+
+  const filtered = results.filter((result) => {
+    const matchesCategory =
+      !filters.category ||
+      result.categoryId === filters.category ||
+      result.category.toLowerCase() === filters.category.toLowerCase();
+    const matchesCity =
+      !filters.city ||
+      result.city.toLowerCase() === filters.city.toLowerCase();
+    const matchesRating = result.rating >= minimumRating;
+
+    return matchesCategory && matchesCity && matchesRating;
+  });
+
+  return [...filtered].sort((first, second) => {
+    if (filters.sortBy === "rated") {
+      return second.rating - first.rating;
+    }
+
+    if (filters.sortBy === "reviewed") {
+      return second.reviews - first.reviews;
+    }
+
+    return 0;
+  });
+}
+
 export default function Search() {
   const searchParams = useSearchParams();
   const query = searchParams.get("query")?.trim() || "";
   const [results, setResults] = useState<Result[]>([]);
+  const [allResults, setAllResults] = useState<Result[]>([]);
   const [totalResults, setTotalResults] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [minRating, setMinRating] = useState<string | null>(null);
@@ -198,13 +248,14 @@ export default function Search() {
       });
 
     const endpoint = query ? ENDPOINTS.searchBusinesses : ENDPOINTS.getBusinesses;
-    const params = query ? { query } : { page: activePage, limit: 10 };
+      const params = query ? { query } : { page: activePage, limit: 10 };
     baseApi.get(endpoint, { params })
       .then((response) => {
         if (!isMounted) return;
         const parsed = parseBusinesses(response.data);
-        setResults(parsed.results);
-        setTotalResults(parsed.total);
+          setAllResults(parsed.results);
+          setResults(parsed.results);
+          setTotalResults(parsed.total);
       })
       .catch(() => {
         if (isMounted) setResults([]);
@@ -217,6 +268,18 @@ export default function Search() {
       isMounted = false;
     };
   }, [activePage, query]);
+
+  const handleApplyFilters = () => {
+    const filters: AppliedFilters = {
+      category: selectedCategory,
+      city: selectedCity,
+      minRating,
+      sortBy,
+    };
+    const filteredResults = applyResultFilters(allResults, filters);
+    setResults(filteredResults);
+    setTotalResults(filteredResults.length);
+  };
 
   const toggleSave = async (businessId: string) => {
     const wasSaved = savedBusinesses.has(businessId);
@@ -361,6 +424,7 @@ export default function Search() {
 
           <button
             type="button"
+            onClick={handleApplyFilters}
             className="mt-5 w-full rounded-xl bg-[#00663f] py-2.5 text-[13px] font-bold text-white hover:bg-[#00552f]"
           >
             Apply Filters

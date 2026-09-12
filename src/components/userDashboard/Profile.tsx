@@ -110,12 +110,12 @@ export default function Profile() {
 
   return (
     <div className="space-y-8">
-      <div>
+      {/* <div>
         <h1 className="text-2xl font-bold text-slate-900">
           {currentUser ? `Bonjour, ${currentUser}` : isLoading ? "Loading profile..." : "Unable to load profile"} {currentUser && "👋"}
         </h1>
         <p className="mt-1 text-sm text-slate-500">Welcome back to your dashboard. Here&apos;s what&apos;s been happening.</p>
-      </div>
+      </div> */}
 
       <div>
         <div className="flex items-center justify-between">

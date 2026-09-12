@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FiCheck, FiLoader, FiX } from "react-icons/fi";
+import { FiCheck, FiChevronDown, FiLoader, FiSearch, FiX } from "react-icons/fi";
 import { toast } from "sonner";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
@@ -16,6 +16,8 @@ type Category = {
 
 type TemplateConfig = {
   templateName: string;
+  standardFields?: Record<string, "REQUIRED" | "OPTIONAL" | "HIDDEN" | string>;
+  customFields?: { fieldName: string; isRequired?: boolean }[];
   allowSpecialRequests: boolean;
   allowOccasions: boolean;
   allowNewsletterOptIn: boolean;
@@ -33,6 +35,8 @@ export default function BookingTemplate() {
   const [templates, setTemplates] = useState<TemplateStatus[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
+  const [selectedSlug, setSelectedSlug] = useState("");
+  const [categorySearch, setCategorySearch] = useState("");
 
   // Load categories first, then load their booking templates
   useEffect(() => {
@@ -61,6 +65,7 @@ export default function BookingTemplate() {
           error: null,
         }));
         setTemplates(statuses);
+        setSelectedSlug(statuses[0]?.slug || "");
 
         // Load booking template for each category
         for (const category of categories) {
@@ -171,6 +176,13 @@ export default function BookingTemplate() {
     );
   };
 
+  const matchingTemplates = templates.filter((template) => {
+    const search = categorySearch.trim().toLowerCase();
+    return !search || template.name.toLowerCase().includes(search) || template.slug.toLowerCase().includes(search);
+  });
+
+  const selectedTemplate = templates.find((template) => template.slug === selectedSlug) || matchingTemplates[0];
+
   if (isLoadingCategories) {
     return (
       <div className="flex items-center justify-center gap-2 py-12 text-slate-500">
@@ -194,15 +206,59 @@ export default function BookingTemplate() {
           No categories found.
         </div>
       ) : (
-        <div className="grid gap-4">
-          {templates.map((template) => (
-            <div key={template.slug} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-[#dcebe3] bg-white p-5 shadow-[0_8px_25px_rgba(0,102,63,0.06)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+              <label className="min-w-0 flex-1">
+                <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Search category</span>
+                <div className="relative mt-2">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                  <input
+                    type="search"
+                    value={categorySearch}
+                    onChange={(event) => setCategorySearch(event.target.value)}
+                    placeholder="Search by category name or slug..."
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-[#00663f] focus:bg-white focus:ring-2 focus:ring-[#00663f]/10"
+                  />
+                </div>
+              </label>
+              <label className="w-full lg:max-w-sm">
+                <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Choose category</span>
+                <div className="relative mt-2">
+                  <select
+                    value={selectedTemplate?.slug || ""}
+                    onChange={(event) => setSelectedSlug(event.target.value)}
+                    className="h-11 w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 px-3 pr-10 text-sm font-semibold text-slate-800 outline-none transition focus:border-[#00663f] focus:bg-white focus:ring-2 focus:ring-[#00663f]/10"
+                  >
+                    {matchingTemplates.map((template) => (
+                      <option key={template.slug} value={template.slug}>{template.name}</option>
+                    ))}
+                  </select>
+                  <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#00663f]" size={17} />
+                </div>
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-slate-500">
+              {matchingTemplates.length} categor{matchingTemplates.length === 1 ? "y" : "ies"} found. Select one to view its complete booking setup.
+            </p>
+          </div>
+
+          {selectedTemplate ? (
+            <div key={selectedTemplate.slug} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_8px_25px_rgba(15,23,42,0.05)]">
+              {(() => {
+                const template = selectedTemplate;
+                return <>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <h2 className="text-lg font-bold text-slate-900">{template.name}</h2>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#e4f3ec] text-lg font-bold text-[#00663f]">{template.name.charAt(0).toUpperCase()}</div>
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-900">{template.name}</h2>
                   <p className="mt-1 text-sm text-slate-500">
                     Category slug: <span className="font-medium text-slate-700">{template.slug}</span>
                   </p>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {template.error && (
@@ -225,7 +281,34 @@ export default function BookingTemplate() {
                 </div>
               ) : template.config ? (
                 <>
-                  <div className="mt-6 space-y-4">
+                  <div className="mt-6 grid gap-5 lg:grid-cols-2">
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                      <h3 className="text-sm font-bold text-slate-900">Standard fields</h3>
+                      <div className="mt-3 space-y-2">
+                        {Object.entries(template.config.standardFields || {}).map(([field, status]) => (
+                          <div key={field} className="flex items-center justify-between rounded-lg bg-white px-3 py-2.5">
+                            <span className="text-sm font-medium capitalize text-slate-700">{field.replace(/([A-Z])/g, " $1")}</span>
+                            <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${status === "REQUIRED" ? "bg-amber-50 text-amber-700" : status === "HIDDEN" ? "bg-slate-100 text-slate-500" : "bg-[#eaf6f0] text-[#00663f]"}`}>{status}</span>
+                          </div>
+                        ))}
+                        {Object.keys(template.config.standardFields || {}).length === 0 && <p className="text-xs text-slate-500">No standard fields configured.</p>}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                      <h3 className="text-sm font-bold text-slate-900">Custom fields</h3>
+                      <div className="mt-3 space-y-2">
+                        {(template.config.customFields || []).map((field) => (
+                          <div key={field.fieldName} className="flex items-center justify-between rounded-lg bg-white px-3 py-2.5">
+                            <span className="text-sm font-medium text-slate-700">{field.fieldName}</span>
+                            <span className="rounded-full bg-[#eaf6f0] px-2 py-1 text-[10px] font-bold text-[#00663f]">{field.isRequired ? "REQUIRED" : "OPTIONAL"}</span>
+                          </div>
+                        ))}
+                        {(template.config.customFields || []).length === 0 && <p className="text-xs text-slate-500">No custom fields configured.</p>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 space-y-3">
                     <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
                       <label className="text-sm font-medium text-slate-700">Allow Special Requests</label>
                       <button
@@ -291,8 +374,12 @@ export default function BookingTemplate() {
                   </div>
                 </>
               ) : null}
+                </>;
+              })()}
             </div>
-          ))}
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">No matching category found.</div>
+          )}
         </div>
       )}
     </div>

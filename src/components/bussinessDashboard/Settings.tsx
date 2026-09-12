@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
@@ -326,10 +327,15 @@ export default function Settings() {
     ? profile.fullName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()
     : (user?.email?.charAt(0).toUpperCase() ?? "?");
 
+  const profileStatus = biz?.isApproved || biz?.status === "approved"
+    ? "Approved"
+    : biz?.status || "Pending review";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#00663f]">Workspace</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">Settings</h1>
         <p className="mt-1 text-sm text-slate-500">Manage your business profile and account preferences.</p>
       </div>
 
@@ -362,8 +368,78 @@ export default function Settings() {
             <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">No business profile found.</div>
           ) : (
             <div className="space-y-6">
+              {/* Profile overview */}
+              <section className="overflow-hidden rounded-3xl border border-[#dcebe3] bg-white shadow-[0_12px_35px_rgba(0,102,63,0.08)]">
+                <div className="relative h-32 overflow-hidden bg-[#005b3a] sm:h-40">
+                  {biz.coverImage ? (
+                    <img
+                      src={mediaUrl(biz.coverImage)}
+                      alt=""
+                      className="h-full w-full object-cover opacity-80"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-[radial-gradient(circle_at_85%_20%,#43a879,transparent_35%),linear-gradient(120deg,#005b3a,#00855a)]" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#003d28]/80 via-[#00663f]/20 to-transparent" />
+                  <div className="absolute left-5 top-4 flex items-center gap-2 text-xs font-semibold text-white/85">
+                    <FiBriefcase size={14} /> Business profile
+                  </div>
+                </div>
+
+                <div className="relative px-5 pb-5 sm:px-7">
+                  <div className="-mt-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="flex items-end gap-4">
+                      <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-white bg-[#e4f3ec] text-2xl font-bold text-[#00663f] shadow-lg">
+                        {biz.logo ? (
+                          <img src={mediaUrl(biz.logo)} alt={`${biz.name || "Business"} logo`} className="h-full w-full object-contain" />
+                        ) : (
+                          (biz.name || "B").charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="rounded-xl bg-[#00663f] px-3 py-2 shadow-sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="text-xl font-bold tracking-tight text-white">{biz.name || "Your business"}</h2>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#e7f6ee] px-2.5 py-1 text-[11px] font-bold text-[#00663f]">
+                            <FiCheckCircle size={12} /> {profileStatus}
+                          </span>
+                        </div>
+                        <p className="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
+                          <FiMapPin size={14} className="text-[#00663f]" />
+                          {location?.city || "Add your business location"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleEditSection("basic")}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00663f] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#004f31]"
+                    >
+                      <FiEdit2 size={14} /> Edit profile
+                    </button>
+                  </div>
+
+                  <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-600">
+                    {biz.description || "Add a short description so customers understand what makes your business special."}
+                  </p>
+
+                  <div className="mt-5 grid grid-cols-2 gap-2 border-t border-slate-100 pt-4 sm:grid-cols-4 sm:gap-3">
+                    {[
+                      { label: "Rating", value: biz.averageRating != null ? `${Number(biz.averageRating).toFixed(1)} / 5` : "No rating" },
+                      { label: "Reviews", value: String(biz.reviewCount ?? 0) },
+                      { label: "Total views", value: String(biz.totalViews ?? 0) },
+                      { label: "Visitors", value: String(biz.uniqueVisitors ?? 0) },
+                    ].map((stat) => (
+                      <div key={stat.label} className="rounded-xl bg-[#f6faf8] px-3 py-2.5">
+                        <p className="text-[11px] font-medium text-slate-500">{stat.label}</p>
+                        <p className="mt-0.5 text-sm font-bold text-slate-900">{stat.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
               {/* Basic Info */}
-              <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_5px_20px_rgba(15,23,42,0.04)]">
                 <div className="flex items-center justify-between">
                   <h2 className="flex items-center gap-2 font-bold text-slate-900">
                     <FiBriefcase size={18} /> Basic Information
@@ -427,7 +503,7 @@ export default function Settings() {
               </div>
 
               {/* Media */}
-              <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_5px_20px_rgba(15,23,42,0.04)]">
                 <div className="flex items-center justify-between">
                   <h2 className="flex items-center gap-2 font-bold text-slate-900">
                     <FiImage size={18} /> Media Assets
@@ -547,33 +623,53 @@ export default function Settings() {
                     </div>
                   </>
                 ) : (
-                  <div className="mt-4 space-y-3 text-sm">
-                    <div className="grid grid-cols-3 gap-3">
+                  <div className="mt-5 space-y-5 text-sm">
+                    <div className="grid gap-4 md:grid-cols-3">
                       {biz.logo && (
-                        <div>
-                          <span className="block text-xs text-slate-500 mb-2">Logo</span>
-                          <img src={mediaUrl(biz.logo)} alt="Logo" className="h-20 w-full object-contain rounded-lg border border-slate-200" />
+                        <div className="group md:col-span-1">
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-500">Logo</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#00663f]">Brand mark</span>
+                          </div>
+                          <div className="flex h-36 items-center justify-center overflow-hidden rounded-2xl border border-[#dcebe3] bg-[#f4faf7] p-4 shadow-sm transition group-hover:shadow-md">
+                            <img src={mediaUrl(biz.logo)} alt="Logo" className="h-full w-full object-contain transition duration-300 group-hover:scale-105" />
+                          </div>
                         </div>
                       )}
                       {biz.coverImage && (
-                        <div>
-                          <span className="block text-xs text-slate-500 mb-2">Cover</span>
-                          <img src={mediaUrl(biz.coverImage)} alt="Cover" className="h-20 w-full object-cover rounded-lg border border-slate-200" />
+                        <div className="group md:col-span-2">
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-500">Cover</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Profile banner</span>
+                          </div>
+                          <div className="h-36 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm transition group-hover:shadow-md">
+                            <img src={mediaUrl(biz.coverImage)} alt="Cover" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                          </div>
                         </div>
                       )}
                       {biz.bookingModalImage && (
-                        <div>
-                          <span className="block text-xs text-slate-500 mb-2">Booking Modal</span>
-                          <img src={mediaUrl(biz.bookingModalImage)} alt="Modal" className="h-20 w-full object-cover rounded-lg border border-slate-200" />
+                        <div className="group md:col-span-1">
+                          <div className="mb-2 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-500">Booking modal</span>
+                          </div>
+                          <div className="h-36 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm transition group-hover:shadow-md">
+                            <img src={mediaUrl(biz.bookingModalImage)} alt="Modal" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                          </div>
                         </div>
                       )}
                     </div>
                     {biz.gallery && biz.gallery.length > 0 && (
-                      <div>
-                        <span className="block text-xs text-slate-500 mb-2">Gallery ({biz.gallery.length} images)</span>
-                        <div className="grid grid-cols-4 gap-2">
+                      <div className="border-t border-slate-100 pt-4">
+                        <div className="mb-3 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-slate-500">Gallery</span>
+                          <span className="rounded-full bg-[#eaf6f0] px-2.5 py-1 text-[10px] font-bold text-[#00663f]">{biz.gallery.length} images</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                           {biz.gallery.slice(0, 4).map((img, i) => (
-                            <img key={i} src={mediaUrl(img)} alt={`Gallery ${i + 1}`} className="h-16 w-full object-cover rounded-lg border border-slate-200" />
+                            <div key={i} className="group relative h-28 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
+                              <img src={mediaUrl(img)} alt={`Gallery ${i + 1}`} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+                              <span className="absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-semibold text-white">0{i + 1}</span>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -583,7 +679,7 @@ export default function Settings() {
               </div>
 
               {/* Contact Info */}
-              <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_5px_20px_rgba(15,23,42,0.04)]">
                 <div className="flex items-center justify-between">
                   <h2 className="flex items-center gap-2 font-bold text-slate-900">
                     <FiPhone size={18} /> Contact Information
@@ -661,7 +757,7 @@ export default function Settings() {
               </div>
 
               {/* Location */}
-              <div className="rounded-2xl bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-[0_5px_20px_rgba(15,23,42,0.04)]">
                 <div className="flex items-center justify-between">
                   <h2 className="flex items-center gap-2 font-bold text-slate-900">
                     <FiMapPin size={18} /> Location

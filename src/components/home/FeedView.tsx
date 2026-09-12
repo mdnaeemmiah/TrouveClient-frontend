@@ -307,26 +307,22 @@ export default function FeedView() {
 
     baseApi
       .post(ENDPOINTS.countView(postId), {})
-      .then(() =>
-        baseApi
-          .get(ENDPOINTS.getView(postId))
-          .then((response) => {
-            const viewsCount = extractViewsCount(response.data);
+      .then((response) => {
+        const responseViewsCount = extractViewsCount(response.data);
 
-            if (typeof viewsCount === "number") {
-              setPosts((current) =>
-                current.map((post) =>
-                  post._id === postId
-                    ? { ...post, viewsCount }
-                    : post,
-                ),
-              );
-            }
-          })
-          .catch(() => {
-            // The POST already counted the view.
-          }),
-      )
+        setPosts((current) =>
+          current.map((post) =>
+            post._id === postId
+              ? {
+                  ...post,
+                  viewsCount:
+                    responseViewsCount ??
+                    (post.viewsCount || 0) + 1,
+                }
+              : post,
+          ),
+        );
+      })
       .catch(() => {
         viewedPostsRef.current.delete(postId);
         setViewedPosts((current) => {
@@ -614,9 +610,9 @@ export default function FeedView() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-[#edf7f2] px-3 py-1 text-[11px] font-bold text-[#00663f]">
+                        {/* <span className="rounded-full bg-[#edf7f2] px-3 py-1 text-[11px] font-bold text-[#00663f]">
                           Live
-                        </span>
+                        </span> */}
                         <button
                           type="button"
                           onClick={() => void toggleFollow(post)}
