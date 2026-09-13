@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import type { IconType } from "react-icons";
 import {
@@ -17,6 +18,7 @@ import {
   FiCalendar,
 } from "react-icons/fi";
 import { useAuth } from "@/src/context/AuthContext";
+import logo from "@/src/assets/auth/image.png";
 
 type NavItem = {
   label: string;
@@ -67,15 +69,17 @@ export default function AdminSidebar({ open, onClose }: AdminSidebarProps) {
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-start justify-between px-3 pb-5">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Motor Bridge</h2>
-            <p className="mt-1 text-sm text-green-100/90">Admin Dashboard</p>
+        <div className="relative px-3 pb-7">
+          <div className="w-[calc(100%-1.75rem)] lg:w-full">
+            <div className="flex h-16 w-full items-center rounded-2xl border border-white/70 bg-white px-3 py-2 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <Image src={logo} alt="TrouveClients.fr" width={320} height={160} className="h-full w-full object-contain" priority unoptimized />
+            </div>
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-green-100/90">Admin Dashboard</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-green-100 transition-colors hover:text-white lg:hidden"
+            className="absolute right-0 top-1 text-green-100 transition-colors hover:text-white lg:hidden"
           >
             <FiX className="text-[20px]" />
           </button>

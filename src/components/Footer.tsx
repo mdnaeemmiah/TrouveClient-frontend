@@ -1,11 +1,15 @@
 import { ArrowRight } from "lucide-react";
+import Image from "next/image";
+import logo1 from "../assets/details/image.png"
 
 export default function Footer() {
   return (
-    <footer className="bg-[#181a1b] text-white">
+    <footer className="bg-[#202020] text-white">
       <div className="mx-auto grid  grid-cols-1 gap-8 px-6 py-11 sm:grid-cols-2 lg:grid-cols-[1.65fr_1fr_1.35fr_1.5fr] lg:gap-12 lg:px-[max(30px,calc((100vw-1400px)/2))]">
         <div>
-          <a className="mb-5 inline-block text-xl font-extrabold tracking-tight" href="#top">TrouveClients.fr</a>
+          <a className="mb-5 inline-flex h-12 w-48 items-center" href="#top" aria-label="TrouveClients.fr home">
+            <Image src={logo1} alt="TrouveClients.fr" width={240} height={120} className="h-full w-full object-contain" priority unoptimized />
+          </a>
           <p className="text-xs leading-relaxed text-[#a2a7ab]">Find. Choose. Contact. Your local business directory in France.</p>
           <div className="mt-5 flex gap-3">
             <a className="grid h-7 w-7 place-items-center rounded-full bg-[#363a3b] text-[11px] font-extrabold" href="#linkedin" aria-label="LinkedIn">in</a>

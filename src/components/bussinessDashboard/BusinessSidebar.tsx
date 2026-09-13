@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import type { IconType } from "react-icons";
@@ -18,6 +19,7 @@ import {
 import { toast } from "sonner";
 import baseApi from "@/src/api/baseApi";
 import { ENDPOINTS } from "@/src/api/endPoints";
+import logo from "@/src/assets/auth/image.png";
 
 type NavItem = {
   label: string;
@@ -73,17 +75,19 @@ export default function BusinessSidebar({ open, onClose }: BusinessSidebarProps)
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-start justify-between px-3 pb-6">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight">TrouveClients.fr</h2>
-            <p className="mt-1 text-xs font-medium uppercase tracking-wide text-green-100/80">
+        <div className="relative px-3 pb-7">
+          <div className="w-[calc(100%-1.75rem)] lg:w-full">
+            <div className="flex h-16 w-full items-center rounded-2xl border border-white/70 bg-white px-3 py-2 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
+              <Image src={logo} alt="TrouveClients.fr" width={320} height={160} className="h-full w-full object-contain" priority unoptimized />
+            </div>
+            <p className="mt-2 text-xs font-medium uppercase tracking-wide text-green-100/80">
               Business Dashboard
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-green-100 transition-colors hover:text-white lg:hidden"
+            className="absolute right-0 top-1 text-green-100 transition-colors hover:text-white lg:hidden"
           >
             <FiX className="text-[20px]" />
           </button>

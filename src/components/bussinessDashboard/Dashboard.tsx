@@ -435,7 +435,9 @@ export default function Dashboard() {
             {/* Rating breakdown mini chart */}
             <div className="flex flex-col gap-1 flex-1 max-w-[80px]">
               {[5,4,3,2,1].map(rating => {
-                const count = analytics?.ratingSummary?.breakdown?.[rating.toString()] || Math.floor(Math.random() * 20);
+                const count = analytics?.ratingSummary?.breakdown?.[
+                  rating.toString() as "1" | "2" | "3" | "4" | "5"
+                ] || Math.floor(Math.random() * 20);
                 const percentage = (count / currentRating.reviews) * 100;
                 return (
                   <div key={rating} className="flex items-center gap-1.5">

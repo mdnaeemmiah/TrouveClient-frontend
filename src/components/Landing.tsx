@@ -12,6 +12,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
+import AddBusinessButton from "./AddBusinessButton";
 import CategoriesSection, { type Category } from "./CategoriesSection";
 import { businesses } from "@/src/data/businesses";
 import baseApi from "@/src/api/baseApi";
@@ -81,7 +82,9 @@ export default async function Landing() {
         </div>
       </section> */}
 
-      <section className="bg-[#00774c] px-5 py-[57px] text-center text-white md:py-[70px]" id="join"><h2 className="text-[31px] font-bold tracking-tight md:text-4xl lg:text-[42px]">Are you a business owner?</h2><p className="mx-auto my-5 max-w-[610px] text-sm leading-relaxed text-[#b5e0cc] lg:max-w-[680px] lg:text-[16px]">Grow your local presence and connect with thousands of potential customers in your city. Join our directory today.</p><div className="flex flex-col items-center justify-center gap-4 sm:flex-row"><a className="rounded-[10px] bg-white px-6 py-3.5 text-[13px] font-bold text-[#00663f] lg:text-sm" href="#join">Add Your Business Now</a><a className="rounded-[10px] border border-[#45b18a] px-6 py-3.5 text-[13px] font-bold lg:text-sm" href="#about">Learn More</a></div></section>
+      <section className="bg-[#00774c] px-5 py-[57px] text-center text-white md:py-[70px]" id="join"><h2 className="text-[31px] font-bold tracking-tight md:text-4xl lg:text-[42px]">Are you a business owner?</h2><p className="mx-auto my-5 max-w-[610px] text-sm leading-relaxed text-[#b5e0cc] lg:max-w-[680px] lg:text-[16px]">Grow your local presence and connect with thousands of potential customers in your city. Join our directory today.</p><div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+        <AddBusinessButton className="rounded-[10px] bg-white px-6 py-3.5 text-[13px] font-bold text-[#00663f] lg:text-sm">Add Your Business Now</AddBusinessButton>
+        <a className="rounded-[10px] border border-[#45b18a] px-6 py-3.5 text-[13px] font-bold lg:text-sm" href="#about">Learn More</a></div></section>
 
       <Footer />
     </main>

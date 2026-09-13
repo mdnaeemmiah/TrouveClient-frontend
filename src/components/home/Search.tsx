@@ -47,6 +47,12 @@ type BusinessResponse = {
   total?: number;
 };
 
+type SearchResponse = {
+  data?: {
+    service_category?: string;
+  };
+};
+
 type Category = {
   _id?: string;
   name?: string;
@@ -74,12 +80,13 @@ function parseBusinesses(response: BusinessResponse): { results: Result[]; total
         | { _id?: string; name?: string }
         | string
         | undefined;
+      const serviceCategory = business.service_category as string | undefined;
       const location = business.location as { city?: string } | undefined;
       return {
         _id: String(business._id || business.slug || business.name),
         slug: String(business.slug || business._id || ""),
         name: String(business.name || "Unnamed business"),
-        category: typeof category === "string" ? category : category?.name || "Business",
+        category: serviceCategory || (typeof category === "string" ? category : category?.name || "Business"),
         categoryId:
           typeof category === "string"
             ? category
@@ -92,6 +99,10 @@ function parseBusinesses(response: BusinessResponse): { results: Result[]; total
     }),
     total,
   };
+}
+
+function getServiceCategory(response: SearchResponse): string {
+  return response.data?.service_category?.trim() || "";
 }
 
 function parseComparisonResponse(payload: unknown): ComparisonData {
@@ -247,22 +258,49 @@ export default function Search() {
         if (isMounted) setSavedBusinesses(new Set());
       });
 
-    const endpoint = query ? ENDPOINTS.searchBusinesses : ENDPOINTS.getBusinesses;
-      const params = query ? { query } : { page: activePage, limit: 10 };
-    baseApi.get(endpoint, { params })
-      .then((response) => {
+    const loadResults = async () => {
+      try {
+        let parsed: { results: Result[]; total: number };
+
+        if (query) {
+          const searchResponse = await baseApi.get<SearchResponse>(ENDPOINTS.searchBusinesses, {
+            params: { query },
+          });
+          const serviceCategory = getServiceCategory(searchResponse.data);
+
+          if (!serviceCategory) {
+            parsed = { results: [], total: 0 };
+          } else {
+            const businessesResponse = await baseApi.get<BusinessResponse>(ENDPOINTS.getBusinesses);
+            const businesses = parseBusinesses(businessesResponse.data);
+            const matchingResults = businesses.results.filter(
+              (business) => business.category.toLowerCase() === serviceCategory.toLowerCase(),
+            );
+            parsed = { results: matchingResults, total: matchingResults.length };
+          }
+        } else {
+          const businessesResponse = await baseApi.get<BusinessResponse>(ENDPOINTS.getBusinesses, {
+            params: { page: activePage, limit: 10 },
+          });
+          parsed = parseBusinesses(businessesResponse.data);
+        }
+
         if (!isMounted) return;
-        const parsed = parseBusinesses(response.data);
-          setAllResults(parsed.results);
-          setResults(parsed.results);
-          setTotalResults(parsed.total);
-      })
-      .catch(() => {
-        if (isMounted) setResults([]);
-      })
-      .finally(() => {
+        setAllResults(parsed.results);
+        setResults(parsed.results);
+        setTotalResults(parsed.total);
+      } catch {
+        if (isMounted) {
+          setAllResults([]);
+          setResults([]);
+          setTotalResults(0);
+        }
+      } finally {
         if (isMounted) setIsLoading(false);
-      });
+      }
+    };
+
+    void loadResults();
 
     return () => {
       isMounted = false;

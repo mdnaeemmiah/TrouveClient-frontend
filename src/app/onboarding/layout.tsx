@@ -1,20 +1,19 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import Footer from "@/src/components/Footer";
 import OnboardingPreview from "@/src/components/onboarding/OnboardingPreview";
 import OnboardingStepper from "@/src/components/onboarding/OnboardingStepper";
 import { OnboardingProvider } from "@/src/context/OnboardingContext";
+import logo from "@/src/assets/auth/image.png";
 
 export default function OnboardingLayout({ children }: { children: ReactNode }) {
   return (
     <OnboardingProvider>
       <div className="flex min-h-screen flex-col bg-[#f4f8f6]">
         <header className="flex h-18 shrink-0 items-center border-b border-[#dcebe4] bg-white px-6 lg:px-[max(30px,calc((100vw-1400px)/2))]">
-          <Link
-            href="/"
-            className="text-xl font-extrabold tracking-tight text-[#00663f] lg:text-[22px]"
-          >
-            TrouveClients.fr
+          <Link href="/" className="flex h-12 w-[210px] items-center" aria-label="TrouveClients.fr home">
+            <Image src={logo} alt="TrouveClients.fr" width={280} height={130} className="h-full w-full object-contain" priority unoptimized />
           </Link>
         </header>
 

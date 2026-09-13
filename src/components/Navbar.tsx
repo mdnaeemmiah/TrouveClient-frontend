@@ -5,20 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { useAuth } from "@/src/context/AuthContext";
 import { useProfileAvatar } from "@/src/hooks/useProfileAvatar";
-
-const BUSINESS_SUBMISSION_KEY = "business_submission";
-
-function hasSubmittedBusiness() {
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    return localStorage.getItem(`${BUSINESS_SUBMISSION_KEY}:${user?.email || "guest"}`) === "true";
-  } catch {
-    return false;
-  }
-}
+import AddBusinessButton from "./AddBusinessButton";
+import logo from "../assets/auth/image.png";
 
 const navItems: { label: string; href: string; match: string | null }[] = [
   { label: "Home", href: "/", match: "/" },
@@ -33,6 +23,7 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // refresh avatar when profile is saved from any settings page
@@ -80,23 +71,11 @@ export default function Navbar() {
     router.push("/auth/login");
   };
 
-  const handleAddBusiness = () => {
-    if (!user) {
-      toast.info("Please log in before adding your business.");
-      router.push("/auth/login");
-      return;
-    }
-    if (hasSubmittedBusiness()) {
-      toast.info("You have already submitted a business profile. Checking its approval status.");
-      router.push("/business-submitted");
-      return;
-    }
-    router.push("/onboarding/grow");
-  };
-
   return (
     <header className="sticky top-0 z-50 flex h-[72px] items-center gap-9 border-b border-[#f0f1f2] bg-white px-6 shadow-xs lg:px-[max(30px,calc((100vw-1400px)/2))]">
-      <Link className="text-xl font-extrabold tracking-tight text-[#00663f] lg:text-[22px]" href="/#top">TrouveClients.fr</Link>
+      <Link className="flex h-12 w-[210px] shrink-0 items-center" href="/#top" aria-label="TrouveClients.fr home">
+        <Image src={logo} alt="TrouveClients.fr" width={280} height={130} className="h-full w-full object-contain" priority unoptimized />
+      </Link>
       <nav className="hidden h-full items-center gap-7 text-xs md:flex lg:text-[13px]" aria-label="Primary navigation">
         {navItems.map((item) => {
           const active = item.match !== null && pathname === item.match;
@@ -157,16 +136,92 @@ export default function Navbar() {
         ) : (
           <Link href="/auth/login">Sign in</Link>
         )}
-        <button
-          type="button"
-          onClick={handleAddBusiness}
+        <AddBusinessButton
           className="rounded-lg bg-[#00663f] px-6 py-2.5 font-bold text-white"
         >
           Add Your Business
-        </button>
+        </AddBusinessButton>
       </div>
 
-      <button className="ml-auto text-[#00663f] md:hidden" type="button" aria-label="Open navigation menu"><Menu size={20} /></button>
+      <div className="relative ml-auto flex items-center gap-3 md:hidden">
+        {user && (
+          <button
+            type="button"
+            onClick={() => { setMobileMenuOpen(false); router.push(dashboardHref); }}
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-[#00663f]/30"
+            aria-label="Profile"
+          >
+            {liveAvatar ? (
+              <Image src={liveAvatar} alt={liveName || "Profile"} fill className="object-cover" unoptimized />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center bg-[#00663f] text-sm font-semibold text-white">
+                {liveInitials || user.name?.charAt(0).toUpperCase() || "?"}
+              </span>
+            )}
+          </button>
+        )}
+        <button
+          className="text-[#00663f]"
+          type="button"
+          onClick={() => setMobileMenuOpen((value) => !value)}
+          aria-label="Open navigation menu"
+          aria-expanded={mobileMenuOpen}
+        >
+          <Menu size={22} />
+        </button>
+
+        {mobileMenuOpen && (
+          <div className="absolute right-0 top-12 z-50 w-60 rounded-xl border border-[#eef0f1] bg-white p-2 shadow-[0_8px_22px_#1a1a1a14]">
+            <nav className="border-b border-[#eef0f1] pb-2" aria-label="Mobile navigation">
+              {navItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block rounded-lg px-3 py-2.5 text-sm font-semibold ${
+                    item.match !== null && pathname === item.match
+                      ? "bg-[#e4f3ec] text-[#00663f]"
+                      : "text-[#1c1d22] hover:bg-[#f2f2f5]"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            {user ? (
+              <>
+                <Link
+                  href={dashboardHref}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#1c1d22] hover:bg-[#f2f2f5]"
+                >
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
+                  className="block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-[#f2f2f5]"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/auth/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block rounded-lg px-3 py-2.5 text-sm font-semibold text-[#1c1d22] hover:bg-[#f2f2f5]"
+              >
+                Sign in
+              </Link>
+            )}
+            <AddBusinessButton
+              className="mt-2 w-full rounded-lg bg-[#00663f] px-4 py-2.5 text-sm font-bold text-white"
+            >
+              Add Your Business
+            </AddBusinessButton>
+          </div>
+        )}
+      </div>
     </header>
   );
 }

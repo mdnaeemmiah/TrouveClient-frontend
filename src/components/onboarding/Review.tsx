@@ -17,7 +17,7 @@ export default function Review() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#00663f]">Almost there</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Review your information</h2>
+          <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Preview your information</h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">Check the details below before sending your business for approval.</p>
         </div>
         <span className="rounded-full bg-[#e4f3ec] px-3 py-1 text-xs font-bold text-[#00663f]">Ready to submit</span>
@@ -94,7 +94,7 @@ export default function Review() {
         <section className="rounded-xl border border-slate-200 p-5">
           <div className="flex items-start justify-between gap-4">
             <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">05</p><h3 className="mt-1 font-bold text-slate-950">Photos &amp; bookings</h3></div>
-            <Link href="/onboarding/bookings" aria-label="Edit photos and booking settings" className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-50 hover:text-[#00663f]"><FiEdit2 /></Link>
+            <Link href="/onboarding/showCase" aria-label="Edit photos and booking settings" className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-50 hover:text-[#00663f]"><FiEdit2 /></Link>
           </div>
           <dl className="mt-5 space-y-3 text-sm">
             <div className="flex justify-between gap-3"><dt className="text-slate-500">Online bookings</dt><dd className="font-bold text-slate-800">{formData.bookingConfig.isEnabled ? "Enabled" : "Disabled"}</dd></div>
@@ -118,7 +118,7 @@ export default function Review() {
       </div>
 
       <div className="mt-7 flex flex-col-reverse gap-4 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/onboarding/bookings" className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-[#00663f] sm:justify-start"><FiArrowLeft />Back</Link>
+        <Link href="/onboarding/showCase" className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 transition hover:text-[#00663f] sm:justify-start"><FiArrowLeft />Back</Link>
         <button type="button" onClick={submitBusiness} disabled={isSubmitting} className="rounded-xl bg-[#00663f] px-6 py-3 text-sm font-bold text-white shadow-lg shadow-[#00663f]/20 transition hover:bg-[#005333] disabled:cursor-not-allowed disabled:opacity-60">{isSubmitting ? "Submitting..." : "Submit My Business"}</button>
       </div>
     </div>

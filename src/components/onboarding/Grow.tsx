@@ -118,7 +118,7 @@ export default function  Grow() {
   return (
     <div className="max-w-3xl rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_16px_40px_rgba(28,73,53,0.08)] sm:p-7">
       <div className="border-b border-slate-100 pb-5">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#00663f]">Step 1 of 6</p>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#00663f]">Step 1 of 5</p>
         <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Basic information</h2>
         <p className="mt-1 text-sm text-slate-600">Tell customers what makes your business worth discovering.</p>
       </div>
