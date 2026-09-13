@@ -57,9 +57,9 @@ export default function UserSidebar({ open, onClose }: UserSidebarProps) {
             <div className="flex h-16 w-full items-center rounded-2xl border border-white/70 bg-white px-3 py-2 shadow-[0_4px_12px_rgba(0,0,0,0.12)]">
               <Image src={logo} alt="TrouveClients.fr" width={320} height={160} className="h-full w-full object-contain" priority unoptimized />
             </div>
-            <p className="mt-2 text-xs font-medium uppercase tracking-wide text-green-100/80">
+            {/* <p className="mt-2 text-xs font-medium uppercase tracking-wide text-green-100/80">
               My Account
-            </p>
+            </p> */}
           </div>
           <button
             type="button"

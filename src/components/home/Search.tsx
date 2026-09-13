@@ -11,6 +11,7 @@ import {
   Map,
   MapPin,
   Search as SearchIcon,
+  SlidersHorizontal,
   Sparkles,
   Star,
   UtensilsCrossed,
@@ -225,6 +226,7 @@ export default function Search() {
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
   const [sortBy, setSortBy] = useState("relevant");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   useEffect(() => {
     baseApi.get(ENDPOINTS.categories)
@@ -317,6 +319,7 @@ export default function Search() {
     const filteredResults = applyResultFilters(allResults, filters);
     setResults(filteredResults);
     setTotalResults(filteredResults.length);
+    setFiltersOpen(false);
   };
 
   const toggleSave = async (businessId: string) => {
@@ -392,7 +395,17 @@ export default function Search() {
   return (
     <div className="min-h-screen bg-[#f7f7fa]">
       <div className="mx-auto grid grid-cols-1 gap-5 px-5 py-8 md:px-6 lg:grid-cols-[260px_1fr] lg:px-[max(30px,calc((100vw-1400px)/2))] lg:py-10">
-        <aside className="h-fit rounded-2xl border border-[#eef0f1] bg-white p-5">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((open) => !open)}
+          className="flex items-center justify-center gap-2 rounded-xl border border-[#d7d9db] bg-white px-4 py-3 text-sm font-bold text-[#1c1d22] shadow-sm lg:hidden"
+          aria-expanded={filtersOpen}
+        >
+          <SlidersHorizontal size={16} className="text-[#00663f]" />
+          {filtersOpen ? "Hide Filters" : "Show Filters"}
+        </button>
+
+        <aside className={`${filtersOpen ? "block" : "hidden"} h-fit rounded-2xl border border-[#eef0f1] bg-white p-5 lg:block`}>
           <h2 className="text-lg font-bold text-[#1c1d22]">Filters</h2>
 
           <div className="mt-4">
